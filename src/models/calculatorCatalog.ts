@@ -32,11 +32,12 @@ const NO_CAPS: CalculatorCapabilities = {
 const SCI_BASIC: CalculatorCapabilities = { ...NO_CAPS, fractions: true, statistics: true, table: true, ratio: true }
 const SCI_MID: CalculatorCapabilities = { ...SCI_BASIC, complex: true, equation: true, baseN: true, distribution: true }
 const SCI_FULL: CalculatorCapabilities = { ...SCI_MID, matrices: true, vectors: true, calculus: true, spreadsheet: true }
-const MS_BASIC: CalculatorCapabilities = { ...NO_CAPS, fractions: true, statistics: true, table: true }
+const MS_BASIC: CalculatorCapabilities = { ...NO_CAPS, fractions: true, statistics: true }
 const MS_MID: CalculatorCapabilities = { ...MS_BASIC, equation: true, baseN: true }
 const GRAPHING: CalculatorCapabilities = { ...SCI_FULL, graphing: true, programming: true }
 const CAS: CalculatorCapabilities = { ...GRAPHING, cas: true }
-const FINANCE: CalculatorCapabilities = { ...NO_CAPS, fractions: true, finance: true, table: true }
+const FINANCE: CalculatorCapabilities = { ...NO_CAPS, finance: true, statistics: true }
+const MS_FULL: CalculatorCapabilities = { ...MS_MID, complex: true, matrices: true, vectors: true, calculus: true }
 
 interface VariantSpec {
   id: string
@@ -44,6 +45,18 @@ interface VariantSpec {
   caps: CalculatorCapabilities
   region?: string
   language?: string
+  features?: string[]
+}
+
+/**
+ * 'full'    — the family engine implements every mode the model declares.
+ * 'partial' — the engine runs (real calculations, modes, persistence) but
+ *             some of the model's declared features are still "coming soon".
+ * 'planned' — no engine yet; the page shows an honest "Coming soon" state.
+ */
+function statusFor(id: string, implemented: Map<string, ImplementationStatus> | Set<string>): ImplementationStatus {
+  if (implemented instanceof Map) return implemented.get(id) ?? 'planned'
+  return implemented.has(id) ? 'full' : 'planned'
 }
 
 function buildFamily(
@@ -55,7 +68,7 @@ function buildFamily(
   displayProfile: string,
   keyboardProfile: string,
   variants: VariantSpec[],
-  implemented: Set<string>,
+  implemented: Map<string, ImplementationStatus> | Set<string>,
   tagline: string,
 ): CalculatorModelConfig[] {
   return variants.map((v) => ({
@@ -71,8 +84,9 @@ function buildFamily(
     regionVariant: v.region,
     languageProfile: v.language,
     capabilities: v.caps,
-    implementationStatus: (implemented.has(v.id) ? 'full' : 'planned') as ImplementationStatus,
+    implementationStatus: statusFor(v.id, implemented),
     tagline,
+    features: v.features,
   }))
 }
 
@@ -134,26 +148,30 @@ const exVariants: VariantSpec[] = [
   { id: 'fx-991la-x', name: 'fx-991LA X', caps: SCI_FULL, region: 'LATAM', language: 'es' },
 ]
 
+const ES_BASIC: CalculatorCapabilities = { ...NO_CAPS, fractions: true, statistics: true, table: true }
+const ES_MID: CalculatorCapabilities = { ...ES_BASIC, complex: true, equation: true, baseN: true, calculus: true }
+const ES_FULL: CalculatorCapabilities = { ...ES_MID, matrices: true, vectors: true }
+
 const esPlusVariants: VariantSpec[] = [
-  { id: 'fx-82es-plus', name: 'fx-82ES PLUS', caps: SCI_BASIC },
-  { id: 'fx-85es-plus', name: 'fx-85ES PLUS', caps: SCI_BASIC },
-  { id: 'fx-350es-plus', name: 'fx-350ES PLUS', caps: SCI_MID },
-  { id: 'fx-570es-plus', name: 'fx-570ES PLUS', caps: SCI_MID },
-  { id: 'fx-991es-plus', name: 'fx-991ES PLUS', caps: SCI_FULL },
-  { id: 'fx-300es-plus', name: 'fx-300ES PLUS', caps: SCI_BASIC, region: 'US' },
-  { id: 'fx-115es-plus', name: 'fx-115ES PLUS', caps: SCI_FULL, region: 'US' },
-  { id: 'fx-991es-plus-c', name: 'fx-991ES PLUS C', caps: SCI_FULL },
-  { id: 'fx-991id-plus', name: 'fx-991ID PLUS', caps: SCI_FULL, region: 'ID', language: 'id' },
-  { id: 'fx-82la-plus', name: 'fx-82LA PLUS', caps: SCI_BASIC, region: 'LATAM', language: 'es' },
-  { id: 'fx-350la-plus', name: 'fx-350LA PLUS', caps: SCI_MID, region: 'LATAM', language: 'es' },
-  { id: 'fx-570la-plus', name: 'fx-570LA PLUS', caps: SCI_MID, region: 'LATAM', language: 'es' },
-  { id: 'fx-991la-plus', name: 'fx-991LA PLUS', caps: SCI_FULL, region: 'LATAM', language: 'es' },
-  { id: 'fx-87de-plus', name: 'fx-87DE PLUS', caps: SCI_MID, region: 'DE', language: 'de' },
-  { id: 'fx-570vn-plus', name: 'fx-570VN PLUS', caps: SCI_MID, region: 'VN', language: 'vi' },
-  { id: 'fx-82au-plus-ii', name: 'fx-82AU PLUS II', caps: SCI_BASIC, region: 'AU' },
-  { id: 'fx-100au-plus', name: 'fx-100AU PLUS', caps: SCI_MID, region: 'AU' },
-  { id: 'fx-82za-plus-ii', name: 'fx-82ZA PLUS II', caps: SCI_BASIC, region: 'ZA' },
-  { id: 'fx-991za-plus-ii', name: 'fx-991ZA PLUS II', caps: SCI_FULL, region: 'ZA' },
+  { id: 'fx-82es-plus', name: 'fx-82ES PLUS', caps: ES_BASIC },
+  { id: 'fx-85es-plus', name: 'fx-85ES PLUS', caps: ES_BASIC },
+  { id: 'fx-350es-plus', name: 'fx-350ES PLUS', caps: ES_MID },
+  { id: 'fx-570es-plus', name: 'fx-570ES PLUS', caps: ES_MID },
+  { id: 'fx-991es-plus', name: 'fx-991ES PLUS', caps: ES_FULL },
+  { id: 'fx-300es-plus', name: 'fx-300ES PLUS', caps: ES_BASIC, region: 'US' },
+  { id: 'fx-115es-plus', name: 'fx-115ES PLUS', caps: ES_FULL, region: 'US' },
+  { id: 'fx-991es-plus-c', name: 'fx-991ES PLUS C', caps: ES_FULL },
+  { id: 'fx-991id-plus', name: 'fx-991ID PLUS', caps: ES_FULL, region: 'ID', language: 'id' },
+  { id: 'fx-82la-plus', name: 'fx-82LA PLUS', caps: ES_BASIC, region: 'LATAM', language: 'es' },
+  { id: 'fx-350la-plus', name: 'fx-350LA PLUS', caps: ES_MID, region: 'LATAM', language: 'es' },
+  { id: 'fx-570la-plus', name: 'fx-570LA PLUS', caps: ES_MID, region: 'LATAM', language: 'es' },
+  { id: 'fx-991la-plus', name: 'fx-991LA PLUS', caps: ES_FULL, region: 'LATAM', language: 'es' },
+  { id: 'fx-87de-plus', name: 'fx-87DE PLUS', caps: ES_MID, region: 'DE', language: 'de' },
+  { id: 'fx-570vn-plus', name: 'fx-570VN PLUS', caps: ES_MID, region: 'VN', language: 'vi' },
+  { id: 'fx-82au-plus-ii', name: 'fx-82AU PLUS II', caps: ES_BASIC, region: 'AU' },
+  { id: 'fx-100au-plus', name: 'fx-100AU PLUS', caps: ES_MID, region: 'AU' },
+  { id: 'fx-82za-plus-ii', name: 'fx-82ZA PLUS II', caps: ES_BASIC, region: 'ZA' },
+  { id: 'fx-991za-plus-ii', name: 'fx-991ZA PLUS II', caps: ES_FULL, region: 'ZA' },
 ]
 
 const msVariants: VariantSpec[] = [
@@ -161,8 +179,8 @@ const msVariants: VariantSpec[] = [
   { id: 'fx-85ms', name: 'fx-85MS', caps: MS_BASIC },
   { id: 'fx-95ms', name: 'fx-95MS', caps: MS_MID },
   { id: 'fx-100ms', name: 'fx-100MS', caps: MS_MID },
-  { id: 'fx-570ms', name: 'fx-570MS', caps: { ...MS_MID, complex: true } },
-  { id: 'fx-991ms', name: 'fx-991MS', caps: { ...MS_MID, complex: true } },
+  { id: 'fx-570ms', name: 'fx-570MS', caps: MS_FULL },
+  { id: 'fx-991ms', name: 'fx-991MS', caps: MS_FULL },
 ]
 
 const graph9860Variants: VariantSpec[] = [
@@ -190,15 +208,40 @@ const classPadVariants: VariantSpec[] = [
 
 const financialVariants: VariantSpec[] = [
   { id: 'fc-100v', name: 'FC-100V', caps: FINANCE },
-  { id: 'fc-200v', name: 'FC-200V', caps: FINANCE },
+  { id: 'fc-200v', name: 'FC-200V', caps: FINANCE, features: ['depreciation', 'bond', 'breakEven'] },
 ]
 
-// Only models whose `engine` id resolves to a factory registered in
-// engineRegistry.ts may be marked 'full' — see /docs/architecture.md
-// ("No fake features"). Today that's the shared ClassWiz engine, which
-// serves both the CW and EX generations (same interaction model).
-const IMPLEMENTED_MVP = new Set(['fx-991cw', 'fx-991ex'])
-const NONE_IMPLEMENTED = new Set<string>()
+// Implementation status per family. Every model of a family runs on the
+// family's engine and gets its modes from its own capability flags, so
+// regional variants work through configuration alone. ClassWiz/ES PLUS/MS
+// models are 'partial' where the hardware has modes we have not built
+// (spreadsheet, inequality, CALC prompts...); graphing and CAS families are
+// 'partial' by design for this phase — see /docs/calculator-matrix.md.
+type Cap = keyof CalculatorCapabilities
+const SCIENTIFIC_CORE: Cap[] = ['arithmetic', 'fractions', 'complex', 'matrices', 'vectors', 'statistics', 'calculus', 'equation', 'table', 'baseN']
+
+/** Capabilities each engine actually implements today (keep in sync with the engines' mode lists). */
+export const ENGINE_SUPPORT: Record<EngineId, ReadonlySet<Cap>> = {
+  classwiz: new Set<Cap>([...SCIENTIFIC_CORE, 'ratio', 'distribution']),
+  'classwiz-ex': new Set<Cap>([...SCIENTIFIC_CORE, 'ratio', 'distribution']),
+  esplus: new Set<Cap>(SCIENTIFIC_CORE),
+  ms: new Set<Cap>(SCIENTIFIC_CORE.filter((c) => c !== 'table')),
+  graph9860: new Set<Cap>(['arithmetic', 'fractions', 'matrices', 'statistics', 'calculus', 'equation', 'table', 'graphing', 'programming']),
+  cg50: new Set<Cap>(['arithmetic', 'fractions', 'matrices', 'statistics', 'calculus', 'equation', 'table', 'graphing', 'programming']),
+  cg100: new Set<Cap>(['arithmetic', 'fractions', 'matrices', 'statistics', 'calculus', 'equation', 'table', 'graphing', 'programming']),
+  classpad: new Set<Cap>(['arithmetic', 'fractions', 'calculus', 'equation', 'graphing', 'cas']),
+  financial: new Set<Cap>(['arithmetic', 'finance', 'statistics']),
+}
+
+/** Capabilities a model declares that its engine does not implement yet ("coming soon"). */
+export function missingCapabilities(config: Pick<CalculatorModelConfig, 'engine' | 'capabilities'>): Cap[] {
+  const support = ENGINE_SUPPORT[config.engine]
+  return (Object.keys(config.capabilities) as Cap[]).filter((k) => config.capabilities[k] && !support.has(k))
+}
+
+function derivedStatus(engine: EngineId, variants: VariantSpec[]): Map<string, ImplementationStatus> {
+  return new Map(variants.map((v) => [v.id, missingCapabilities({ engine, capabilities: v.caps }).length === 0 ? 'full' : 'partial']))
+}
 
 export const calculatorCatalog: CalculatorModelConfig[] = [
   ...buildFamily(
@@ -210,7 +253,7 @@ export const calculatorCatalog: CalculatorModelConfig[] = [
     'classwiz-cw',
     'classwiz-standard',
     cwVariants,
-    IMPLEMENTED_MVP,
+    derivedStatus('classwiz', cwVariants),
     'Natural textbook display scientific calculator (latest ClassWiz generation).',
   ),
   ...buildFamily(
@@ -222,7 +265,7 @@ export const calculatorCatalog: CalculatorModelConfig[] = [
     'classwiz-ex',
     'classwiz-standard',
     exVariants,
-    IMPLEMENTED_MVP,
+    derivedStatus('classwiz', exVariants),
     'Natural textbook display scientific calculator (previous ClassWiz generation).',
   ),
   ...buildFamily(
@@ -234,10 +277,10 @@ export const calculatorCatalog: CalculatorModelConfig[] = [
     'esplus',
     'esplus-standard',
     esPlusVariants,
-    NONE_IMPLEMENTED,
+    derivedStatus('esplus', esPlusVariants),
     'Two-line natural display scientific calculator.',
   ),
-  ...buildFamily('ms', 'MS', 'ms', 'scientific', 'basic', 'ms', 'ms-standard', msVariants, NONE_IMPLEMENTED, 'Classic single-line display scientific calculator.'),
+  ...buildFamily('ms', 'MS', 'ms', 'scientific', 'basic', 'ms', 'ms-standard', msVariants, derivedStatus('ms', msVariants), 'Classic single-line display scientific calculator.'),
   ...buildFamily(
     'graphing-9860',
     'Graphing (9750/9860)',
@@ -247,13 +290,13 @@ export const calculatorCatalog: CalculatorModelConfig[] = [
     'graph9860',
     'graph9860-standard',
     graph9860Variants,
-    NONE_IMPLEMENTED,
+    derivedStatus('graph9860', graph9860Variants),
     'Monochrome graphing calculator with programming support.',
   ),
-  ...buildFamily('cg50', 'fx-CG50', 'cg50', 'graphing', 'advanced', 'cg50', 'cg50-standard', cg50Variants, NONE_IMPLEMENTED, 'Full-color graphing calculator.'),
-  ...buildFamily('cg100', 'fx-CG100', 'cg100', 'graphing', 'advanced', 'cg100', 'cg100-standard', cg100Variants, NONE_IMPLEMENTED, 'Touchscreen full-color graphing calculator.'),
-  ...buildFamily('classpad', 'ClassPad / CAS', 'classpad', 'cas', 'advanced', 'classpad', 'classpad-standard', classPadVariants, NONE_IMPLEMENTED, 'Touchscreen CAS calculator with symbolic algebra.'),
-  ...buildFamily('financial', 'Financial', 'financial', 'financial', 'intermediate', 'financial', 'financial-standard', financialVariants, NONE_IMPLEMENTED, 'Financial calculator for interest, cash flow and amortization.'),
+  ...buildFamily('cg50', 'fx-CG50', 'cg50', 'graphing', 'advanced', 'cg50', 'cg50-standard', cg50Variants, derivedStatus('cg50', cg50Variants), 'Full-color graphing calculator.'),
+  ...buildFamily('cg100', 'fx-CG100', 'cg100', 'graphing', 'advanced', 'cg100', 'cg100-standard', cg100Variants, derivedStatus('cg100', cg100Variants), 'Full-color graphing calculator with a redesigned keyboard and HOME screen.'),
+  ...buildFamily('classpad', 'ClassPad / CAS', 'classpad', 'cas', 'advanced', 'classpad', 'classpad-standard', classPadVariants, derivedStatus('classpad', classPadVariants), 'Touchscreen CAS calculator with symbolic algebra.'),
+  ...buildFamily('financial', 'Financial', 'financial', 'financial', 'intermediate', 'financial', 'financial-standard', financialVariants, derivedStatus('financial', financialVariants), 'Financial calculator for interest, cash flow and amortization.'),
 ]
 
 export function getCalculatorById(id: string): CalculatorModelConfig | undefined {

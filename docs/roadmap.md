@@ -1,29 +1,24 @@
 # Roadmap
 
-Tracks the build order from the project brief. Status reflects this repository's current state, not intent.
+Status reflects the repository today.
 
 | Phase | Scope | Status |
 | --- | --- | --- |
-| 1 | Core: `CalculatorEngine` contract, `CalculatorState`/`Event`/`Memory`/`Display`/`Keyboard`, math parser/evaluator, generic `KeyboardGrid`/`CalculatorDisplayPanel` | ✅ Done |
-| 2 | ClassWiz engine + fx-991CW vertical slice (COMP mode, SHIFT/ALPHA, memory, history, mode menu, persistence), reused as-is for fx-991EX | ✅ Done |
-| 3 | ES PLUS engine (`ESPlusEngine`, two-line non-natural display rules) | ⚪ Planned |
-| 4 | MS engine (`MSEngine`, single-line display, its own interaction model) | ⚪ Planned |
-| 5 | Graphing engine (`Graph9860Engine`): function plotting, viewport/zoom/pan, tables, basic programming VM | ⚪ Planned |
-| 6 | fx-CG50 engine (`CG50Engine`): color display, same functional surface as phase 5 plus geometry | ⚪ Planned |
-| 7 | fx-CG100 engine (`CG100Engine`): touchscreen input model, kept separate from CG50 per architecture notes | ⚪ Planned |
-| 8 | ClassPad engine (`ClassPadEngine`): CAS (Parser → AST → Simplifier → SymbolicEvaluator → Differentiation/Integration/EquationSolver), document/page model, touch | ⚪ Planned |
-| 9 | Financial engine (`FinancialEngine`): TVM, cash flow, amortization, bonds, depreciation, conversions | ⚪ Planned |
-| 10 | Polish: PWA (installable, offline-capable), performance (lazy-loaded engines, Web Workers for heavy calculus/statistics), full accessibility audit, SEO metadata sweep across all model pages | ⚪ Planned |
+| 1 | Core: engine contract, state/events/memory/display/keyboard, menu system, parser/evaluator | ✅ Done |
+| 2 | ClassWiz (CW + EX): COMP, STAT, TABLE, EQUATION, MATRIX, VECTOR, COMPLEX, BASE-N, RATIO, DISTRIBUTION, SETUP, OPTN, S⇔D, calculus | ✅ Done (Spreadsheet, Inequality pending) |
+| 3 | ES PLUS engine | ✅ Done (CALC prompts pending) |
+| 4 | MS engine (paged modes, SD/REG with DT) | ✅ Done |
+| 5 | Graph9860: RUN, GRAPH (trace/zoom/pan/G-Solve/V-Window), TABLE, STAT, EQUA, MATRIX, PRGM VM | ✅ Core done |
+| 6 | CG50: colour profile on the shared graphing core | ✅ Core done (Geometry, Picture Plot, 3D, Python pending) |
+| 7 | CG100: separate engine, TOOLS-menu interaction, Graph&Table | ✅ Core done (Python, Geometry, 3D pending) |
+| 8 | ClassPad: CAS (simplify/expand/factor/solve/diff/integrate), touch document, graph app | 🟡 Partial |
+| 9 | Financial: SMPL, CMPD, CASH, AMRT, CNVR, COST, DAYS, STAT, DEPR, BOND, BEVN | ✅ Done |
+| 10 | PWA (installable, offline precache), lazy engines, accessibility pass, SEO metadata | ✅ Done (Web Workers deferred) |
 
-## Near-term next steps (once phase 3 starts)
+## Next steps
 
-1. Confirm ES PLUS's two-line (non-natural) editing model differs enough from ClassWiz's natural display to
-   need its own `CalculatorDisplayState` handling, or whether it can reuse `kind: 'text'` with different
-   line-wrapping rules.
-2. Extend `calculatorCatalog.ts`'s `esPlusVariants` entries' `implementationStatus` to `'full'` for fx-991ES
-   PLUS once `ESPlusEngine` passes an equivalent test suite to `ClassWizEngine.test.ts`.
-3. Add ES PLUS-specific Playwright specs mirroring `e2e/fx991cw.spec.ts`.
-
-Each phase should ship with: engine unit tests, an updated `calculatorCatalog.ts` entry (`implementationStatus:
-'full'`), and at least one Playwright spec proving the "press keys → real result" golden path, before the next
-phase starts — per the project's "vertical slice first" rule.
+1. ClassWiz Spreadsheet mode (FormApplet grid variant) and Inequality mode.
+2. 2-D natural-display rendering (fractions, roots, powers) for ClassWiz/ES PLUS from a template AST.
+3. Graphing: parametric/polar graphs, list arithmetic in RUN, CONICS.
+4. CAS: complex mode, matrices, higher-degree exact solving, integration by parts/substitution.
+5. Language profiles (es/de/fr menus) driven by `languageProfile`.

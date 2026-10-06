@@ -11,7 +11,7 @@ interface CalculatorEngine<TState extends CalculatorState = CalculatorState> {
   initialize(): TState
   pressKey(keyId: string): void
   releaseKey(keyId: string): void
-  execute(event: CalculatorEvent): void
+  execute(event: CalculatorEvent): void   // KEY_PRESS, ENTER, NAV_*, MODE, TOUCH, TEXT_INPUT, RESET, ...
   reset(): void
   getState(): TState
   setState(state: TState): void
@@ -23,113 +23,114 @@ interface CalculatorEngine<TState extends CalculatorState = CalculatorState> {
 }
 ```
 
-No engine file imports `react`. `src/ui/hooks/useCalculatorEngine.ts` is the *only* place a React hook talks to
-an engine, via `useSyncExternalStore` — this is what makes `ClassWizEngine.test.ts` able to press 18 different
-key sequences and assert on `engine.getState()` without ever mounting a component. Math correctness and state
-machine correctness are provable independently of rendering.
+No engine file imports React. `src/ui/hooks/useCalculatorEngine.ts` is the only bridge (via
+`useSyncExternalStore`); every engine test presses keys and asserts on `getState()` / `getDisplay()` without
+rendering anything.
 
-`src/calculators/core/BaseCalculatorEngine` supplies the plumbing every engine needs (subscription list, generic
-KEY_PRESS routing, save/load via `serializeState`/`deserializeState`) so a new family only has to implement
-`initialize()`, `handleKeyId()` and `getDisplay()`.
+`BaseCalculatorEngine` supplies subscriptions, persistence (with schema-tolerant `loadState` that rejects another
+model's state) and generic event routing: semantic events such as `ENTER`, `CLEAR`, `NAV_UP`, `MODE` are mapped to
+whichever key of the current layout performs that action, so callers never need model-specific key ids.
 
-## Layered structure
+## Layers
 
 ```
-src/math/          Pure math, zero calculator-specific concepts. Tokenizer → Parser → AST → Evaluator.
-                    Sub-modules per topic (arithmetic, trigonometry, statistics, matrices, complex, calculus).
+src/math/                       Pure math, no calculator concepts
+  parser/                       tokenizer → recursive-descent parser → AST → evaluator (no eval())
+  arithmetic/                   CalcValue: exact BigInt rationals, Decimal fallback; logs/exp
+  trigonometry/ statistics/ matrices/ vectors/ complex/ baseN/ probability/ numerical/ calculus/
+  finance/                      TVM, amortization, cash flow (NPV/IRR/PBP), dates, depreciation, bonds, break-even
+  symbolic/                     CAS: expression tree, simplifier, polynomial algebra, calculus, command front end
 src/calculators/
-  core/             CalculatorEngine contract + CalculatorState/Event/Memory/Display/Keyboard types.
-  classwiz/         ClassWizEngine: COMP mode, SHIFT/ALPHA, memory, history, mode menu.
-  engineRegistry.ts Maps a model's declared `engine` id to a concrete engine factory (registerEngine()).
-src/models/
-  types.ts               CalculatorModelConfig, CalculatorCapabilities.
-  calculatorCatalog.ts    Every model the platform knows about — the single source of truth.
-src/ui/
-  hooks/useCalculatorEngine.ts   Bridges an engine into React (subscribe + persist).
-  components/                    KeyboardGrid, CalculatorDisplayPanel, CalculatorView, HistoryPanel, ...
-  pages/                         Home, Catalog, Calculator, Favorites, Compare, Docs.
-src/storage/        localStorage helpers + Zustand favorites store.
+  core/                         Engine contract, state, events, memory, keyboard, display models, Menu system
+  shared/                       FormApplet (declarative wizard state machine), number formatting, mode specs
+  scientific/                   ScientificEngineBase + mode catalog (shared by ClassWiz, ES PLUS, MS, Financial)
+  classwiz/ esplus/ ms/         Family engines + keyboards
+  graphing/                     GraphingEngineBase, plot utilities, program VM, F-key keyboard
+  graph9860/ cg50/ cg100/       Graphing family engines (profiles, app catalogues, keyboards)
+  classpad/                     Touch-document CAS engine
+  financial/                    Financial engine + mode specs
+  engineRegistry.ts             registerEngine() with lazy loaders (one chunk per family)
+  registry.ts                   registerCalculator / registerKeyboardLayout / registerDisplayProfile
+src/models/                     calculatorCatalog.ts (single source of truth), types.ts
+src/ui/                         React pages/components; only talk to the engine interface
+src/storage/                    localStorage helpers, favourites and preferences (Zustand)
+src/utils/logger.ts             Leveled logger (debug off in production; ring buffer for the inspector)
 ```
+
+## Engines and what they share
+
+| Engine | Base | Display model | What is family-specific |
+| --- | --- | --- | --- |
+| `ClassWizEngine` (CW + EX) | `ScientificEngineBase` | `text` | CW/EX key naming (HOME/TOOLS/FORMAT vs MENU/OPTN/S⇔D), mode order, planned modes |
+| `ESPlusEngine` | `ScientificEngineBase` | `text` | Numbered MODE list, SHIFT+MODE setup, CALC/SOLVE, fraction key, hyp/RCL, error wording, EQN ≤ 3 |
+| `MSEngine` | `ScientificEngineBase` | `text` | Paged MODE screens, decimal-first + a⌟b⌟c results, SD/REG with DT entry and S-SUM/S-VAR, CLR menu |
+| `FinancialEngine` | `ScientificEngineBase` | `text` | One key per financial mode, SOLVE on the highlighted variable, `features`-gated DEPR/BOND/BEVN |
+| `Graph9860Engine` | `GraphingEngineBase` | `screen` 128×64 mono | App catalogue, F-keys |
+| `CG50Engine` | `GraphingEngineBase` | `screen` 384×216 colour | Colour profile, per-function colours, app catalogue |
+| `CG100Engine` | `GraphingEngineBase` | `screen` 384×216 colour | No F-keys (TOOLS menu), HOME/BACK/OK keys, Graph&Table app |
+| `ClassPadEngine` | `BaseCalculatorEngine` | `document` | Touch-first: TOUCH/TEXT_INPUT events, CAS work area, graph app, soft keyboard |
+
+ScientificEngineBase owns the expression editor, SHIFT/ALPHA, STO/RCL, memory and variables, history replay,
+SETUP and OPTN menus, SOLVE/ENG/S⇔D, and dispatch into per-mode applets. A family overrides only what differs
+(`profile`, `openModeMenu`, `onModeKeyInMenu`, `dispatch`, `formatResult`, `preprocess`). The MS engine, for
+example, replaces the mode menu, result formatting and statistics entry entirely. CG100 deliberately shares only
+the generic graphing infrastructure with CG50; its command surface and app catalogue are its own.
 
 ## Capability-driven configuration
 
-Nothing in the UI branches on a model id. `CalculatorCard`, `CatalogPage`, `ComparePage` and `CalculatorPage`
-all read `CalculatorModelConfig.capabilities` / `.implementationStatus` / `.engine` from
-`calculatorCatalog.ts`. Adding fx-82CW's real engine later is a matter of implementing `esplus`/`classwiz`
-variance if needed and calling `registerEngine()` — no existing call site changes.
+Every model in `calculatorCatalog.ts` declares `family`, `engine`, `displayProfile`, `keyboardProfile`,
+`regionVariant`, `languageProfile`, `capabilities` and optional `features`. Nothing branches on a model id:
 
-```ts
-// engineRegistry.ts
-const registry = new Map<EngineId, EngineFactory>([
-  ['classwiz', (config) => new ClassWizEngine(config)],
-])
-export function registerEngine(id: EngineId, factory: EngineFactory) { registry.set(id, factory) }
-```
+- Scientific engines filter their mode list by capability flags (fx-82CW never offers MATRIX).
+- The financial engine enables DEPR/BOND/BEVN from `features` (FC-200V) — not from `if (id === ...)`.
+- `ENGINE_SUPPORT` records which capabilities each engine really implements; `implementationStatus` is
+  **derived** (`full` / `partial`), and the UI labels every unimplemented declared capability "coming soon".
+  A test asserts the two never disagree, so the catalog cannot advertise a fake feature.
 
-## Adding a calculator
+## Mode applets and menus
 
-1. Add an entry to `src/models/calculatorCatalog.ts` (or a new `VariantSpec` in an existing family array) with
-   accurate `capabilities`.
-2. If it's a new engine family, implement `CalculatorEngine` in `src/calculators/<family>/`, following the
-   pattern in `ClassWizEngine.ts` (extend `BaseCalculatorEngine`, implement `initialize()`/`handleKeyId()`/
-   `getDisplay()`), and call `registerEngine('<family>', (config) => new YourEngine(config))`.
-3. If the model needs its own key layout, define a `KeyboardLayout` next to the engine (see
-   `ClassWizKeyboard.ts`) — `KeyboardGrid` renders any layout generically from row/col + variant metadata.
-4. Nothing else changes: the catalog, calculator page routing (`/calculator/:id`), compare page and favorites
-   all pick up the new entry automatically.
+`core/Menu.ts` is the single menu implementation (navigation, numbered shortcuts, submenus, back/cancel, grid
+navigation for icon menus, text rendering). `shared/FormApplet.ts` is a declarative "choose → fill values →
+results" state machine used by EQUATION, MATRIX, VECTOR, STAT, TABLE, RATIO, DISTRIBUTION, the graphing EQUA /
+MATRIX apps, V-Window/Table settings, and every financial worksheet (with field-level SOLVE). Its state is plain
+JSON inside `CalculatorState.modeState`, so mode inputs persist across reloads.
 
-## Why ClassWiz CW and EX share one engine, but MS doesn't
+## Display models
 
-CW and EX are the same interaction model (natural textbook display, SHIFT/ALPHA, same menu structure) at two
-firmware generations — CASIO's own materials describe EX as the prior generation of the same design language CW
-continues. Their `CalculatorModelConfig.engine` is `'classwiz'` for both.
+- `text`: character LCD lines, cursor, inverted highlight line, indicators, title, error text.
+- `screen`: dot-matrix content (`lines`, `icons`, `table`, `graph`) with a `ScreenProfile`; the canvas renderer
+  draws at native dot coordinates on a supersampled backing store. Graph curves are sampled by the engine
+  (one sample per screen column, split at discontinuities), so the renderer contains no maths.
+- `document`: ClassPad-style app tabs, toolbar, entries, editable input line and an engine-defined soft keyboard.
 
-MS is a genuinely different interaction model: single-line non-natural display, different SHIFT/ALPHA
-conventions, no Spreadsheet/CAS-adjacent modes. Rather than special-casing MS behavior inside `ClassWizEngine`
-with `if (isMSModel)` branches, MS gets `engine: 'ms'` and (once implemented) its own `MSEngine`. This mirrors
-the project brief's explicit instruction: "No intentes hacer que MS se comporte exactamente como CW."
+## Programs (graphing) — sandbox
 
-## The math engine
+`graphing/program/ProgramVM.ts` interprets an original BASIC-style teaching language (assignment, `IF/ELSE/END`,
+`FOR/NEXT`, `WHILE/WEND`, `PRINT`, `INPUT`, `STOP`). It is parsed to a tree and executed by a generator with a
+100 000-step budget. Expressions go through the shared math evaluator, so a program can only read/write
+single-letter numeric variables, print text and request numbers: no DOM, network, storage, `eval` or
+`Function`. See `decisions/005-program-vm-sandbox.md`.
 
-`src/math/parser` implements a hand-written recursive-descent parser (no `eval()`, ever):
+## CAS
 
-```
-expression := term (('+' | '-') term)*
-term       := unary (('*' | '/' | implicit) unary)*
-unary      := ('-' | '+') unary | power
-power      := postfix ('^' unary)?      // right-associative
-postfix    := primary ('!' | '%')*
-primary    := NUMBER | IDENT ('(' args ')')? | '(' expression ')'
-```
+`math/symbolic/` separates Parser/AST (shared parser with `allowEquations`), the expression tree, the simplifier
+(`simplify`, `expand`), polynomial algebra (`toQPoly`, `factor`, `solve`), calculus (`diff`, `integrate`,
+`definiteIntegral` with numeric fallback) and numeric evaluation (`approx`). See `decisions/004-cas-design.md`.
 
-Implicit multiplication (`2π`, `2(3+4)`, `3sin(30)`) is handled in `parseTerm` by checking whether the next
-token can start a new factor. `-2^2` evaluates to `-4` (unary minus binds looser than `^`), matching standard
-calculator convention; `2^-3` still works because `^`'s right-hand side is itself a `unary`.
+## Persistence
 
-`CalcValue` (`src/math/arithmetic/value.ts`) keeps numbers as exact BigInt rationals for as long as every
-operation involved stays rational (so `1/3 * 3` is exactly `1`, and fraction results display as `a/b`), and
-only falls back to `Decimal` (32-digit fixed precision via `decimal.js`) once an irrational operation (a
-non-perfect-square root, trig, log, `exp`) is applied. See "Precision" in `/docs/decisions/001-precision-model.md`
-for the tradeoffs.
+Each model persists its full `CalculatorState` under `casio-emulator-hub:calculator-state:<id>` on every change,
+plus an optional manual snapshot (`snapshot:<id>`). BigInt values are serialized with a reviver. Models never
+share memory. UI preferences (theme, LCD palette) and favourites are separate Zustand stores.
 
-## Display and keyboard are declarative, not hardcoded
+## Performance and offline
 
-`CalculatorDisplayState` (`kind: 'text'`, `lines`, `cursorLine/Col`, `indicators`, `errorMessage`) is produced
-by each engine's `getDisplay()` and rendered by one shared `CalculatorDisplayPanel` component. Graphing/CAS
-engines will extend this with a `kind: 'canvas'` variant later without breaking the text-display contract that
-scientific calculators use today.
+Routes and engine families are lazy chunks (`React.lazy` + `registerEngine(id, loader, true)`), so opening the
+home page does not download any calculator engine. A build plugin emits `precache-manifest.json`; the service
+worker (`public/sw.js`) precaches every asset at install, making all engines available offline after the first
+visit. Heavy work is bounded rather than off-loaded (see `decisions/006-no-web-worker-yet.md`).
 
-`KeyboardLayout`/`KeyDefinition` (`src/calculators/core/CalculatorKeyboard.ts`) describe every key's grid
-position, primary/shift/alpha actions and physical-keyboard bindings as data. `KeyboardGrid.tsx` renders any
-layout from that data and dispatches `engine.pressKey(keyId)` — no component hardcodes "if key is 7, insert 7".
+## Adding things
 
-## No fake features
-
-Per the project brief's explicit rule, a feature that isn't implemented is never simulated. Concretely:
-
-- `ClassWizEngine`'s MODE menu lists every mode the model capability-declares (STAT, MATRIX, ...), but selecting
-  one that isn't implemented sets a `ModeError` ("... is not implemented yet in this build") instead of silently
-  switching to a non-functional mode.
-- `CalculatorPage` renders a "Coming soon" panel — not a decorative fake calculator — for any model whose
-  `engine` has no registered factory or whose `implementationStatus` isn't `'full'`.
-- Memory (`M+`/`M-`/`MR`/`MC`, `STO`+letter) and history are real, persisted state, not cosmetic UI.
+See the in-app `/docs` page (sections “Add a calculator”, “Create a math function”, “Create a keyboard”,
+“Create a display”, “Create a model”) — the same steps apply here.

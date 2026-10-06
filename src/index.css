@@ -1,40 +1,57 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+/* Dark mode follows the explicit theme preference (see preferencesStore.ts). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-  --color-brand-50: #f2f5ff;
-  --color-brand-100: #e6ebff;
-  --color-brand-200: #c3cdff;
-  --color-brand-300: #9fadff;
-  --color-brand-400: #7b8bff;
-  --color-brand-500: #5b6bf0;
-  --color-brand-600: #4650c9;
-  --color-brand-700: #343aa1;
-  --color-brand-800: #242878;
-  --color-brand-900: #171a52;
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Platform accent: a discreet indigo-violet, deliberately unrelated to any calculator brand colour. */
+  --color-brand-50: #f3f3ff;
+  --color-brand-100: #e8e7ff;
+  --color-brand-200: #cfccff;
+  --color-brand-300: #aea8fb;
+  --color-brand-400: #8b80f4;
+  --color-brand-500: #6d5fe8;
+  --color-brand-600: #5946d0;
+  --color-brand-700: #4837aa;
+  --color-brand-800: #352a7d;
+  --color-brand-900: #241d52;
 
   --color-lcd-bg: #b7c9a8;
   --color-lcd-fg: #10190f;
 }
 
-:root {
-  color-scheme: light dark;
-}
-
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100%;
 }
 
 body {
   @apply bg-neutral-50 text-neutral-900 antialiased;
 }
 
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
 :root[data-theme="dark"] body {
   @apply bg-neutral-950 text-neutral-100;
+}
+
+/* "Calculator LCD" appearance: the whole UI takes the configured LCD palette. */
+:root[data-appearance="lcd"] body {
+  background: color-mix(in srgb, var(--color-lcd-bg) 55%, white);
+  color: var(--color-lcd-fg);
+}
+:root[data-appearance="lcd"] .calculator-shell {
+  background: color-mix(in srgb, var(--color-lcd-bg) 35%, #e5e5e5);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {

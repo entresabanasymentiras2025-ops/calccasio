@@ -15,7 +15,12 @@ import type { AstNode } from './ast'
  *   postfix    := primary ('!' | '%')*
  *   primary    := NUMBER | IDENT ('(' args ')')? | '(' expression ')'
  */
-export function parse(input: string): AstNode {
+export interface ParseOptions {
+  /** Accept `a = b` (CAS equations). Numeric evaluation rejects Equation nodes. */
+  allowEquations?: boolean
+}
+
+export function parse(input: string, options: ParseOptions = {}): AstNode {
   const tokens = tokenize(normalizeExpression(input))
   let pos = 0
 
@@ -98,11 +103,20 @@ export function parse(input: string): AstNode {
     return node
   }
 
+  function parseRelation(): AstNode {
+    const left = parseExpression()
+    if (options.allowEquations && check('EQUALS')) {
+      advance()
+      return { type: 'Equation', left, right: parseExpression() }
+    }
+    return left
+  }
+
   function parseArgs(): AstNode[] {
-    const args: AstNode[] = [parseExpression()]
+    const args: AstNode[] = [parseRelation()]
     while (check('COMMA')) {
       advance()
-      args.push(parseExpression())
+      args.push(parseRelation())
     }
     return args
   }
@@ -130,7 +144,7 @@ export function parse(input: string): AstNode {
     throw new MathError('SyntaxError', `Unexpected token '${peek().value || peek().type}'`)
   }
 
-  const result = parseExpression()
+  const result = parseRelation()
   expect('EOF', 'Unexpected trailing input')
   return result
 }

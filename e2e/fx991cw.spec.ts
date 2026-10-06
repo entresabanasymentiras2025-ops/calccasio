@@ -59,14 +59,37 @@ test('memory M+ / MR round-trip', async ({ page }) => {
   await expect(page.getByRole('status')).toContainText('= 5')
 })
 
-test('MODE opens a real menu and selecting an unimplemented mode shows a clear message', async ({ page }) => {
-  await page.getByRole('button', { name: 'MODE', exact: true }).click()
+test('HOME opens a real mode menu; a planned mode shows a clear message', async ({ page }) => {
+  await page.getByRole('button', { name: 'HOME', exact: true }).click()
   await expect(page.getByRole('status')).toContainText('Calculate')
 
-  await page.getByRole('button', { name: '▼', exact: true }).click()
+  await page.getByRole('button', { name: '▲', exact: true }).click()
   await page.getByRole('button', { name: '=', exact: true }).click()
 
   await expect(page.getByRole('status')).toContainText('not implemented')
+})
+
+test('change mode, leave, come back: the mode persists', async ({ page }) => {
+  await page.getByRole('button', { name: 'HOME', exact: true }).click()
+  await page.getByRole('button', { name: '▼', exact: true }).click()
+  await page.getByRole('button', { name: '=', exact: true }).click()
+  await expect(page.getByTestId('current-mode')).toHaveText('STAT')
+
+  await page.goto('/calculators')
+  await page.goto('/calculator/fx-991cw')
+  await expect(page.getByTestId('current-mode')).toHaveText('STAT')
+  await expect(page.getByRole('status')).toContainText('1-Variable')
+})
+
+test('EQUATION mode solves a quadratic through the keypad', async ({ page }) => {
+  await page.getByRole('button', { name: 'HOME', exact: true }).click()
+  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: '▼', exact: true }).click()
+  await page.getByRole('button', { name: '=', exact: true }).click()
+  await page.getByRole('button', { name: '2', exact: true }).click() // Polynomial
+  await page.getByRole('button', { name: '1', exact: true }).click() // degree 2
+  for (const k of ['1', '=', '(−)', '5', '=', '6', '=']) await page.getByRole('button', { name: k, exact: true }).click()
+  await expect(page.getByRole('status')).toContainText('x1=3')
+  await expect(page.getByRole('status')).toContainText('x2=2')
 })
 
 test('reset clears the display back to 0', async ({ page }) => {

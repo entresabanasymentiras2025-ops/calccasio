@@ -1,17 +1,33 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#5b6bf0" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#f5f6fa" />
+    <meta name="color-scheme" content="light dark" />
     <meta
       name="description"
       content="CASIO Emulator Hub — independent, from-scratch web emulations of scientific, graphing, CAS and financial calculator interfaces. Not affiliated with CASIO."
     />
-    <title>CASIO Emulator Hub — Scientific Calculators Online</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="CASIO Emulator Hub" />
+    <meta property="og:description" content="Independent web emulations of calculator interfaces. Not an official CASIO product." />
+    <title>CASIO Emulator Hub — Calculadoras científicas y gráficas en tu navegador</title>
+    <script>
+      // Apply the saved theme before first paint to avoid a flash.
+      try {
+        var p = JSON.parse(localStorage.getItem('casio-emulator-hub:preferences') || '{}').state || {}
+        var t = p.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        document.documentElement.dataset.theme = t === 'lcd' ? 'light' : t
+        document.documentElement.dataset.appearance = t
+      } catch (e) {}
+    </script>
   </head>
   <body>
+    <noscript>This calculator hub needs JavaScript to run the calculator engines.</noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

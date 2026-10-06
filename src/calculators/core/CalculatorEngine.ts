@@ -63,14 +63,29 @@ export abstract class BaseCalculatorEngine<TState extends CalculatorState> imple
     // Visual-only for most engines; overridden by engines that need key-up behavior.
   }
 
+  /**
+   * Generic event dispatch. KEY_PRESS/KEY_RELEASE carry a key id; semantic
+   * events (ENTER, CLEAR, NAV_UP, SHIFT, MODE, ...) are routed to whichever
+   * key on this model's layout performs that action, so callers never need
+   * to know a model's key ids. Engines override this for TOUCH/TEXT_INPUT.
+   */
   execute(event: CalculatorEvent): void {
     if (event.type === 'KEY_PRESS' && event.keyId) {
       this.pressKey(event.keyId)
       return
     }
+    if (event.type === 'KEY_RELEASE' && event.keyId) {
+      this.releaseKey(event.keyId)
+      return
+    }
     if (event.type === 'RESET') {
       this.reset()
+      return
     }
+    const actionFor: Partial<Record<CalculatorEvent['type'], string>> = { BACKSPACE: 'BACKSPACE', DELETE: 'DELETE', MENU: 'MENU' }
+    const action = actionFor[event.type] ?? event.type
+    const key = this.keyboardLayout.keys.find((k) => k.primary.action === action) ?? this.keyboardLayout.keys.find((k) => k.shift?.action === action)
+    if (key && key.primary.action === action) this.pressKey(key.id)
   }
 
   reset(): void {
@@ -95,8 +110,17 @@ export abstract class BaseCalculatorEngine<TState extends CalculatorState> imple
     return serializeState(this.state)
   }
 
+  /**
+   * Restores a saved session. Unknown/missing fields fall back to fresh
+   * defaults so sessions saved by older builds keep working, and a state
+   * saved for a different model is rejected.
+   */
   loadState(serialized: string): void {
-    this.state = deserializeState<TState>(serialized)
+    const loaded = deserializeState<Partial<TState>>(serialized)
+    if (!loaded || typeof loaded !== 'object') throw new Error('Invalid saved state')
+    if (loaded.modelId && loaded.modelId !== this.modelId) throw new Error('Saved state belongs to another model')
+    const fresh = this.initialize()
+    this.state = { ...fresh, ...loaded, settings: { ...fresh.settings, ...(loaded.settings ?? {}) }, memory: { ...fresh.memory, ...(loaded.memory ?? {}) } }
     this.notify()
   }
 

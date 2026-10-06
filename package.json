@@ -1,7 +1,7 @@
 {
-  "name": "calccasio",
+  "name": "casio-emulator-hub",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,10 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "docs:matrix": "UPDATE_DOCS=1 vitest run scripts/calculator-matrix.test.ts",
+    "typecheck": "tsc -b",
+    "check": "npm run lint && npm run typecheck && npm test"
   },
   "dependencies": {
     "decimal.js": "^10.6.0",
@@ -38,5 +41,6 @@
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
     "vitest": "^5.0.1"
-  }
+  },
+  "license": "MIT"
 }

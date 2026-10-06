@@ -1,0 +1,5 @@
+[
+  { "mode": "tvm", "input": { "n": 360, "iPercent": 6, "pv": 200000, "pmt": 0, "fv": 0, "py": 12, "cy": 12, "begin": false }, "solve": "pmt", "expected": -1199.1010503 },
+  { "mode": "tvm", "input": { "n": 10, "iPercent": 5, "pv": -1000, "pmt": 0, "fv": 0, "py": 1, "cy": 1, "begin": false }, "solve": "fv", "expected": 1628.894627 },
+  { "mode": "tvm", "input": { "n": 0, "iPercent": 8, "pv": -5000, "pmt": 0, "fv": 10000, "py": 1, "cy": 1, "begin": false }, "solve": "n", "expected": 9.006468342 }
+]

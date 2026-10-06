@@ -1,108 +1,95 @@
 # CASIO Emulator Hub
 
-A web platform for using **independent, from-scratch emulations** of the interfaces and functional behavior of
-different families of scientific, graphing, CAS and financial calculators — right in your browser. Real key
-presses, real math, real memory, real persistence.
+An educational web platform with **independent, from-scratch emulations** of the interfaces and functional
+behaviour of scientific, graphing, CAS and financial calculator families — in the browser. Real key presses,
+real maths, real modes, real memory, real persistence.
 
-> **Independent project, not affiliated with, sponsored by, or endorsed by CASIO Computer Co., Ltd.** CASIO and
-> its product names are trademarks of their respective owners, used here solely to identify which calculator's
-> publicly documented behavior is being emulated. See [`/docs/legal.md`](./docs/legal.md).
+> **Proyecto independiente y no afiliado, patrocinado ni respaldado por CASIO Computer Co., Ltd. CASIO y los
+> nombres de sus productos son marcas de sus respectivos propietarios.** Model names are used only to identify
+> which calculator's publicly documented behaviour is emulated. No ROMs, firmware, manuals, logos or official
+> artwork are used. See [`docs/legal.md`](./docs/legal.md).
 
-## What this is (and isn't)
+## What works today
 
-- ✅ A fully functional calculator you can type on, get real results from, switch modes on, and come back to
-  later with your session intact.
-- ✅ Original code: state machines, math engine, keyboard, and LCD-style display all implemented from scratch.
-- ❌ Not a CASIO product, not a ROM/firmware emulator, not a mockup with fake buttons.
+| Family | Example URL | Highlights |
+| --- | --- | --- |
+| ClassWiz CW / EX (52 models) | `/calculator/fx-991cw`, `/calculator/fx-991ex` | COMP with exact fractions, STAT (1-var + 5 regressions), TABLE, EQUATION (systems up to 4, polynomials up to degree 4 incl. complex roots), MATRIX, VECTOR, COMPLEX, BASE-N, RATIO, DISTRIBUTION, ∫ / d/dx / Σ / Π, SETUP (angle, Fix/Sci, fraction style), S⇔D |
+| ES PLUS (19) | `/calculator/fx-991es-plus` | Numbered MODE list, SHIFT+MODE setup, SOLVE, fraction key, RCL/STO, hyp, ENG |
+| MS (6) | `/calculator/fx-991ms` | Paged MODE screens, a⌟b⌟c fractions, SD/REG with DT entry and S-SUM/S-VAR |
+| fx-9860GIII family (3) | `/calculator/fx-9860giii` | RUN, GRAPH (trace, zoom, pan, V-Window, G-Solve root/max/min/y-icpt/intersection), TABLE, STAT lists, EQUA, MATRIX, PRGM (sandboxed VM) |
+| fx-CG50 family (3) | `/calculator/fx-cg50` | Same apps on a 384×216 colour screen with per-function colours |
+| fx-CG100 family (3) | `/calculator/fx-cg100` | Separate engine: HOME screen, TOOLS menu instead of F-keys, Graph&Table |
+| ClassPad (2) | `/calculator/fx-cp400` | Touch document: simplify, expand, factor, solve, diff, integrate, approx, variables; Graph app |
+| Financial (2) | `/calculator/fc-200v` | SMPL, CMPD (TVM with SOLVE), CASH (NPV/IRR/PBP/NFV), AMRT, CNVR, COST, DAYS, STAT, DEPR, BOND, BEVN (FC-200V) |
 
-## Quick start
+Each model's page shows which of its capabilities are implemented and which are "coming soon". The status is
+derived from code, never hand-written (see [`docs/decisions/003-derived-implementation-status.md`](./docs/decisions/003-derived-implementation-status.md)).
+Full per-model table: [`docs/calculator-matrix.md`](./docs/calculator-matrix.md).
+
+Platform features: catalog with search and type/level/status filters, favourites, functional comparator,
+per-model history (repeat/copy/delete/clear), save/restore snapshot, reset, fullscreen, physical keyboard
+shortcuts, Light/Dark/Calculator-LCD themes with configurable LCD colours, installable offline PWA, per-page SEO
+metadata, and a hidden developer inspector at `/dev/calculator-inspector` (dev builds, or `?dev=1`).
+
+## Getting started
 
 ```sh
 npm install
-npm run dev        # http://localhost:5173
+npm run dev          # http://localhost:5173
+npm run build        # type-check + production build (dist/)
+npm run preview      # serve dist/ on http://localhost:4173
+npm test             # Vitest: unit, integration, golden files
+npm run test:e2e     # Playwright against the production build (run npm run build first)
+npm run lint         # oxlint
+npm run docs:matrix  # regenerate docs/calculator-matrix.md from the catalog
 ```
 
-```sh
-npm run build       # type-checks + production build
-npm run preview      # serve the production build locally
-npm test              # Vitest unit/integration suite
-npm run test:e2e       # Playwright end-to-end suite (builds + serves + runs)
-npm run lint             # oxlint
-```
-
-## What's implemented right now
-
-The MVP vertical slice is the **ClassWiz engine**, in COMP (Calculate) mode, serving both **fx-991CW** and
-**fx-991EX** (the CW and EX generations share one interaction model — see
-[`/docs/architecture.md`](./docs/architecture.md)):
-
-- Full expression parsing/evaluation (arithmetic, trig, logs, powers/roots, factorial, percent, scientific
-  notation) with an original recursive-descent parser — no `eval()`.
-- Exact-fraction arithmetic that falls back to high-precision decimal only when the math is genuinely
-  irrational (see [`/docs/decisions/001-precision-model.md`](./docs/decisions/001-precision-model.md)).
-- SHIFT / ALPHA secondary functions, independent memory (`M+`/`M-`/`MR`/`MC`), `STO`-to-variable, `Ans`,
-  calculation history, a real (non-decorative) MODE menu.
-- DEG/RAD/GRAD angle modes, structured error codes (`SyntaxError`, `MathError`, `DomainError`, ...).
-- Physical keyboard support, session persistence via `localStorage`, fullscreen mode, catalog search/filter,
-  favorites, and a functional (non-subjective) side-by-side comparator across all 90 cataloged models.
-
-The other 88 cataloged models — every ClassWiz CW/EX regional variant besides the two flagships, and all of ES
-PLUS, MS, graphing, CG50, CG100, ClassPad and Financial — are real metadata in the catalog (family, capabilities,
-tagline) with an honest "Coming soon" state on their calculator page, never a fake or partially-wired UI. See
-[`/docs/roadmap.md`](./docs/roadmap.md) for build order and [`/docs/calculator-matrix.md`](./docs/calculator-matrix.md)
-for the full list.
+Deploy `dist/` to any static host; configure SPA fallback (all routes → `index.html`).
 
 ## Architecture
 
 ```
-src/math/            Dependency-light math engine: tokenizer → parser → AST → evaluator, plus
-                      per-topic modules (trigonometry, statistics, matrices, complex, calculus).
+src/math/            Parser, exact arithmetic, trig, stats, matrices, vectors, complex, base-n,
+                     probability, equations, finance, symbolic CAS — no eval(), no external API
 src/calculators/
-  core/               React-agnostic CalculatorEngine contract (state, events, memory, display, keyboard).
-  classwiz/           ClassWizEngine — the only implemented engine today.
-  engineRegistry.ts   Maps a model's `engine` id to a concrete engine (registerEngine()).
-src/models/           calculatorCatalog.ts — single source of truth for every calculator model.
-src/ui/               React hooks/components/pages. Only ever talks to CalculatorEngine.
-src/storage/          localStorage helpers + Zustand favorites store.
+  core/              React-free CalculatorEngine contract, state, events, menu system, display/keyboard models
+  shared/            FormApplet (declarative mode wizards), number formatting, mode specs
+  scientific/        ScientificEngineBase (ClassWiz, ES PLUS, MS, Financial build on it)
+  graphing/          GraphingEngineBase, plotting, program VM (Graph9860, CG50, CG100 build on it)
+  classwiz/ esplus/ ms/ graph9860/ cg50/ cg100/ classpad/ financial/
+  engineRegistry.ts  registerEngine() — lazily loaded engine chunks
+  registry.ts        registerCalculator / registerKeyboardLayout / registerDisplayProfile
+src/models/          calculatorCatalog.ts — the single source of truth for 90 models
+src/ui/              React pages and components (render engine output, forward events)
+tests/golden/        Expected input → output files for several families
+e2e/                 Playwright specs
+docs/                Matrix, architecture, limitations, legal, licenses, sources, roadmap, decisions
 ```
 
-Full details, including "why ClassWiz CW/EX share an engine but MS doesn't" and "how to add a calculator", are
-in [`/docs/architecture.md`](./docs/architecture.md).
+Details: [`docs/architecture.md`](./docs/architecture.md).
 
 ## Adding a calculator
 
-1. Add an entry to `src/models/calculatorCatalog.ts` with accurate `capabilities`.
-2. New family? Implement `CalculatorEngine` in `src/calculators/<family>/` and register it via
-   `registerEngine()` in `src/calculators/engineRegistry.ts`.
-3. New keyboard? Add a `KeyboardLayout` next to the engine — the UI renders any layout generically.
-4. Nothing else changes — catalog, routing, compare and favorites pick it up automatically.
-
-See [`/docs/architecture.md`](./docs/architecture.md) for the walkthrough with code references.
+1. **Same family**: add a `VariantSpec` to the family list in `src/models/calculatorCatalog.ts` with accurate
+   capability flags (and `features` if needed). The engine derives its modes from them. Run `npm run docs:matrix`.
+2. **New family**: implement `CalculatorEngine` (extend `BaseCalculatorEngine`, `ScientificEngineBase` or
+   `GraphingEngineBase`), export a factory, `registerEngine('<id>', () => import(...), true)`, and add its
+   supported capabilities to `ENGINE_SUPPORT`.
+3. **New keyboard / screen**: describe it as data and call `registerKeyboardLayout` / `registerDisplayProfile`.
 
 ## Testing
 
-- **Unit/integration** (`npm test`, Vitest + React Testing Library): the math engine (tokenizer, parser,
-  evaluator, arithmetic/trig/log/matrix/statistics/complex modules), the `ClassWizEngine` state machine (key
-  presses, SHIFT/ALPHA, memory, modes, errors, persistence), and React component integration (real clicks →
-  real display updates).
-- **End-to-end** (`npm run test:e2e`, Playwright against a production build): opening fx-991CW and computing
-  `2+2=4`, SHIFT secondary functions, physical-keyboard input, memory round-trips, the MODE menu's honest
-  "not implemented" message, session persistence across reload, and catalog/favorites/compare navigation.
+- Unit/integration (Vitest + Testing Library): tokenizer, parser, evaluator, arithmetic, trig, matrices,
+  vectors, complex, statistics, distributions, equations, base-n, finance, CAS, menu system, form applets,
+  every engine's state machine, persistence, registry, React components, golden files.
+- E2E (Playwright): the brief's scenarios (2+2=4 on fx-991CW, SHIFT functions, mode persistence across
+  navigation) plus every MVP family, theme/fullscreen, PWA assets and the hidden inspector.
 
-## Documentation
+## Roadmap
 
-| Doc | Contents |
-| --- | --- |
-| [`/docs/calculator-matrix.md`](./docs/calculator-matrix.md) | Every cataloged model, its capabilities, and implementation status |
-| [`/docs/architecture.md`](./docs/architecture.md) | Engine contract, layering, how to add a calculator |
-| [`/docs/limitations.md`](./docs/limitations.md) | What's genuinely not implemented yet, and why |
-| [`/docs/legal.md`](./docs/legal.md) | Independence notice and trademark usage |
-| [`/docs/roadmap.md`](./docs/roadmap.md) | Phase-by-phase build order |
-| [`/docs/licenses.md`](./docs/licenses.md) | Third-party dependency licenses |
-| [`/docs/sources.md`](./docs/sources.md) | What informed the capability matrix, and its accuracy caveats |
-| [`/docs/decisions/`](./docs/decisions/) | Problem/cause/solution/trade-off write-ups for notable engineering decisions |
+See [`docs/roadmap.md`](./docs/roadmap.md) and [`docs/limitations.md`](./docs/limitations.md).
 
 ## License
 
-Original source code is MIT-licensed — see [`LICENSE`](./LICENSE). This does not extend to third-party
-trademarks or software; see [`/docs/legal.md`](./docs/legal.md) and [`/docs/licenses.md`](./docs/licenses.md).
+Original source code: MIT ([`LICENSE`](./LICENSE)). The license does not cover third-party trademarks, software,
+firmware or documentation. Dependency licenses: [`docs/licenses.md`](./docs/licenses.md) (all MIT / Apache-2.0).

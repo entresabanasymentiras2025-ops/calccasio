@@ -1,58 +1,40 @@
 # Known limitations
 
-This project follows a strict "no fake features" rule (see `/docs/architecture.md`): anything listed as
-unsupported below is genuinely unsupported in the UI, not silently approximated behind the scenes.
+Nothing listed here is simulated in the UI: unbuilt features are either absent or labelled "coming soon".
 
-## Scope (MVP)
+## Per family
 
-- Only **`classwiz`** has a working engine right now. The other 8 declared engines (`classwiz-ex` shares
-  `classwiz`'s implementation; `esplus`, `ms`, `graph9860`, `cg50`, `cg100`, `classpad`, `financial` do not yet
-  have implementations) show an explicit "Coming soon" panel on their calculator pages instead of a fake
-  calculator. See `/docs/roadmap.md` for build order.
-- Within `ClassWizEngine`, only **COMP** (Calculate) mode is implemented. STAT, TABLE, EQUATION, MATRIX, VECTOR,
-  COMPLEX, BASE-N, RATIO and DISTRIBUTION modes are listed in the MODE menu (a real, navigable menu) but
-  selecting one surfaces a `ModeError` explaining it isn't implemented yet, rather than pretending to switch
-  modes.
+- **ClassWiz CW/EX**: Spreadsheet and Inequality modes are listed as "(coming soon)" and raise a `ModeError`.
+  Input is linear text (e.g. `1/3`, `√(2)`), not 2-D textbook templates; results show `a b/c` inline. STAT data is
+  entered as comma-separated lists rather than a cell editor. Variable verification (VERIFY), QR codes, the
+  Math Box, CALC prompts and language/regional menu translations are not implemented.
+- **ES PLUS**: no CALC (variable prompt) function; SOLVE is available. No STAT "distribution" functions (P(, Q(, R().
+- **MS**: SD/REG accept `x,freq` / `x,y,freq` with the comma key (hardware uses `;`). `Inv` and `Quad` regressions
+  implemented; `r` is not provided for `Quad`.
+- **Graphing (9860/CG50/CG100)**: RUN does not do complex numbers, lists-as-values, or matrix arithmetic in
+  expressions (matrices are in the MATRIX app). Graph types other than `Y=` (polar, parametric, inequalities),
+  CONICS, DYNA, RECUR, E-CON, Picture Plot, Geometry, 3D Graph and Python are "coming soon". The program language
+  is an original teaching dialect, not a reproduction of the hardware language. Stat graphs are scatter + linear fit.
+- **ClassPad**: CAS covers simplification, expansion, factoring over ℚ (rational roots + irreducible remainder),
+  solving polynomials exactly up to degree 2 after removing rational roots (numeric beyond), derivatives and
+  integrals of elementary functions with linear inner arguments. No complex mode, matrices, geometry,
+  spreadsheet, eActivity documents or multi-page files yet. Trig is in radians.
+- **Financial**: BOND uses Term mode (on a coupon date); the date-based accrued-interest mode is not implemented.
+  Depreciation assumes a full first year (no YR1 proration). Day counts use the actual calendar (365-day basis).
 
 ## Math engine
 
-- **Percent (`%`) is a simple postfix `x / 100`.** Real CASIO hardware applies context-sensitive percent
-  behavior in some expressions (e.g. `100 + 10% ⇒ 110`, i.e. "10% of 100" added to 100). Implementing that
-  requires the evaluator to see the surrounding binary operator at parse time, which is a bigger structural
-  change than the MVP's percent support needs. Documented here rather than silently guessed at.
-- **Transcendental functions (trig, log, exp, hyperbolic) compute at IEEE-754 double precision**, then get
-  wrapped back into the project's `Decimal` type. Exact rational arithmetic (fractions, integer powers,
-  perfect-square/cube roots) stays exact via BigInt numerator/denominator; only irrational operations lose
-  precision beyond ~15-16 significant digits. See `/docs/decisions/001-precision-model.md`.
-- **No arbitrary-precision transcendental functions.** A from-scratch arbitrary-precision `sin`/`ln`/etc. was
-  out of scope for the MVP; `decimal.js` itself doesn't ship these, and pulling in a heavier CAS-grade math
-  library was judged not worth the dependency weight for a scientific (non-CAS) calculator tier.
-- **Natural (2D "textbook") display rendering is not implemented.** Fractions render as `a/b` inline text (or a
-  stacked "whole numerator/denominator" for mixed numbers), not as a true 2D typeset fraction with a horizontal
-  bar; matrices, when implemented, will similarly start as bracketed inline text before any stacked/tabular
-  rendering is attempted.
+- Transcendental functions use IEEE-754 doubles wrapped into `Decimal` (~15 significant digits); exact
+  rationals stay exact. See `decisions/001-precision-model.md`.
+- Percent is postfix `x/100`, not the context-sensitive `a + b%` behaviour of some hardware.
+- `log(a,b)` follows the calculator convention log base a of b.
+- Numerical calculus: `∫` uses composite Simpson (2000 intervals) and `d/dx` a central difference; results are
+  rounded to 12 significant digits to hide method noise.
 
-## Memory & variables
+## Platform
 
-- Independent memory (`M`) and variables (`A`–`F`, `X`, `Y`) are implemented and persist with the rest of
-  calculator state. There is no separate "memory bank" per mode — all COMP-mode variables share one namespace,
-  matching the real hardware's single register file.
-
-## Persistence
-
-- State is saved to `localStorage`, scoped per calculator model id. It is **not** synced across devices or
-  browsers — there is no backend. Clearing site data / private browsing will lose saved sessions.
-- `BigInt` values inside `CalcValue` are serialized through a custom JSON replacer/reviver
-  (`src/calculators/core/serialization.ts`) since `JSON.stringify` can't handle `BigInt` natively.
-
-## Accessibility
-
-- Keyboard and screen-reader labeling (`aria-label`, `role="status"` on the display, `role="group"` on the
-  keypad) is in place for the implemented ClassWiz engine. Full WCAG-level audit (contrast ratios across both
-  themes, comprehensive screen-reader walkthrough) has not been performed yet.
-
-## Testing
-
-- Unit/integration tests (Vitest) and end-to-end tests (Playwright) cover the math engine and the fx-991CW
-  vertical slice thoroughly. Other planned models have no dedicated tests yet since they have no implementation
-  to test — this is intentional per the MVP scope, not an oversight.
+- Persistence is per browser (localStorage); there is no account/sync backend.
+- Physical-keyboard Shift/Ctrl act as calculator SHIFT/ALPHA only when tapped on their own.
+- No Web Workers yet: every computation is bounded (see `decisions/006-no-web-worker-yet.md`).
+- Accessibility: buttons are labelled, displays expose text transcripts (`role=status`), focus is visible and
+  reduced motion is honoured; a full WCAG audit with screen-reader users has not been done.

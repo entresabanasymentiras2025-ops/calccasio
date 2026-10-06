@@ -13,6 +13,7 @@ export type TokenType =
   | 'LPAREN'
   | 'RPAREN'
   | 'COMMA'
+  | 'EQUALS'
   | 'EOF'
 
 export interface Token {
@@ -35,6 +36,7 @@ const SIMPLE_TOKENS: Record<string, TokenType> = {
   '(': 'LPAREN',
   ')': 'RPAREN',
   ',': 'COMMA',
+  '=': 'EQUALS',
 }
 
 const IDENT_START = /[A-Za-zπ]/

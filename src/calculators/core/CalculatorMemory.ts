@@ -5,6 +5,8 @@ export interface HistoryEntry {
   input: string
   result: string
   timestamp: number
+  /** Mode the calculation was made in (history replay is per-mode). */
+  mode?: string
 }
 
 export interface CalculatorMemory {
