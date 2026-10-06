@@ -17,10 +17,7 @@ export function useEngineLoader(engine: EngineId): { ready: boolean; error: stri
   const [ready, setReady] = useState(() => isEngineLoaded(engine))
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
-    if (isEngineLoaded(engine)) {
-      setReady(true)
-      return
-    }
+    if (isEngineLoaded(engine)) return
     let cancelled = false
     loadEngine(engine)
       .then(() => !cancelled && setReady(true))

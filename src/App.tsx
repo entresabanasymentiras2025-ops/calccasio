@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { Layout } from './ui/components/Layout'
 import { HomePage } from './ui/pages/HomePage'
@@ -12,18 +12,9 @@ const DocsPage = lazy(() => import('./ui/pages/DocsPage').then((m) => ({ default
 const DevInspectorPage = lazy(() => import('./ui/pages/DevInspectorPage').then((m) => ({ default: m.DevInspectorPage })))
 const NotFoundPage = lazy(() => import('./ui/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
 
-function Loading() {
-  return (
-    <div className="max-w-6xl mx-auto px-4 py-10 text-sm text-neutral-500" aria-busy="true">
-      Loading…
-    </div>
-  )
-}
-
 function App() {
   return (
-    <Suspense fallback={<Loading />}>
-      <Routes>
+    <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/calculators" element={<CatalogPage />} />
@@ -35,7 +26,6 @@ function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
-    </Suspense>
   )
 }
 

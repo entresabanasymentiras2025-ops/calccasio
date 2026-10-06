@@ -7,11 +7,13 @@ test('history panel records past calculations and can reuse one', async ({ page 
   await expect(page.getByRole('status')).toContainText('= 8')
 
   await page.getByRole('button', { name: 'History', exact: true }).click()
-  const historyEntry = page.getByTitle('Reuse this expression').first()
-  await expect(historyEntry).toContainText('= 8')
+  const history = page.getByRole('region', { name: 'History' })
+  await expect(history).toContainText('= 8')
 
-  await historyEntry.click()
+  await history.getByRole('button', { name: 'Repeat 8' }).click()
   await expect(page.getByRole('status')).toContainText('8')
+  await history.getByRole('button', { name: 'Clear history' }).click()
+  await expect(history).toContainText('No calculations yet.')
 })
 
 test('calculator is usable at a mobile viewport width', async ({ page }) => {
@@ -35,6 +37,6 @@ test('no uncaught page errors while using the calculator', async ({ page }) => {
   await page.getByRole('button', { name: '÷', exact: true }).click()
   await page.getByRole('button', { name: '0', exact: true }).click()
   await page.getByRole('button', { name: '=', exact: true }).click()
-  await expect(page.getByRole('status')).toContainText('MathError')
+  await expect(page.getByRole('status')).toContainText('Math ERROR')
   expect(errors).toEqual([])
 })

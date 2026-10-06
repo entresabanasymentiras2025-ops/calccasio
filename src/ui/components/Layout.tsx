@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { usePreferences, applyPreferences, LCD_PRESETS, type Theme, type LcdPreset } from '../../storage/preferencesStore'
 import { LegalNotice } from './LegalNotice'
@@ -76,7 +76,16 @@ export function Layout() {
       </header>
 
       <main id="main" className="flex-1">
-        <Outlet />
+        {/* Pages are lazy chunks; keep the header/footer visible while one loads. */}
+        <Suspense
+          fallback={
+            <div className="max-w-6xl mx-auto px-4 py-10 text-sm text-neutral-500" aria-busy="true">
+              Loading…
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
       </main>
 
       <footer className="border-t border-neutral-200 dark:border-neutral-800 mt-12">

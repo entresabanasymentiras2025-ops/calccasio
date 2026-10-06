@@ -10,22 +10,27 @@ import type { ScreenDisplayState, ScreenContent } from '../../calculators/core/C
 export default function ScreenDisplay({ display }: { display: ScreenDisplayState }) {
   const ref = useRef<HTMLCanvasElement>(null)
   const { profile } = display
+  // Draw in logical (native) dot coordinates on a supersampled backing store so text stays legible.
+  const scale = Math.max(2, Math.round(512 / profile.width))
 
   useEffect(() => {
     const canvas = ref.current
     const ctx = canvas?.getContext('2d')
     if (!canvas || !ctx) return
+    ctx.setTransform(scale, 0, 0, scale, 0, 0)
     draw(ctx, display)
-  }, [display])
+  }, [display, scale])
 
   return (
     <div className="rounded-lg p-2 shadow-inner" style={{ background: profile.background }}>
       <canvas
         ref={ref}
-        width={profile.width}
-        height={profile.height}
+        width={profile.width * scale}
+        height={profile.height * scale}
+        data-native-width={profile.width}
+        data-native-height={profile.height}
         className="w-full h-auto block"
-        style={{ imageRendering: profile.color ? 'auto' : 'pixelated', aspectRatio: `${profile.width} / ${profile.height}` }}
+        style={{ aspectRatio: `${profile.width} / ${profile.height}` }}
         aria-hidden
       />
       <div role="status" aria-live="polite" className="sr-only" data-testid="screen-text">

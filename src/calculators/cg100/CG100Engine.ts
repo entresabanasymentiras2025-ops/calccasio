@@ -45,7 +45,10 @@ export class CG100Engine extends GraphingEngineBase {
   /** Graph&Table merges both apps: the TOOLS menu offers DRAW and TABLE from the function list. */
   protected commands() {
     const cmds = super.commands()
-    if (this.g.app === 'GRAPH' && this.g.view === 'list') return [...cmds.filter((c) => c.label), { id: 'table', label: 'TABLE' }]
+    if (this.g.app === 'GRAPH' && this.g.view === 'list') {
+      const rest = cmds.filter((c) => c.label && c.id !== 'draw')
+      return [{ id: 'draw', label: 'DRAW' }, { id: 'table', label: 'TABLE' }, ...rest]
+    }
     return cmds.filter((c) => c.label)
   }
 

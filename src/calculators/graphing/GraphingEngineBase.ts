@@ -646,7 +646,7 @@ export abstract class GraphingEngineBase extends BaseCalculatorEngine<Calculator
           const idx = fns.findIndex((f) => f.index === g.trace!.fn)
           const next = fns[(idx + (a === 'NAV_DOWN' ? 1 : fns.length - 1)) % fns.length]
           if (next) this.patch({ trace: { ...g.trace, fn: next.index }, info: null })
-        } else if (action.insert && /[0-9.\-]/.test(action.insert)) {
+        } else if (action.insert && /[0-9.-]/.test(action.insert)) {
           // Typing a number while tracing jumps the cursor to that X (like the hardware's X= prompt).
           const x = Number(action.insert)
           if (Number.isFinite(x)) this.patch({ trace: { ...g.trace, x } })
@@ -739,7 +739,10 @@ export abstract class GraphingEngineBase extends BaseCalculatorEngine<Calculator
     else if (a === 'NAV_UP') this.patch({ stat: { ...st, row: Math.max(0, st.row - 1) } })
     else if (a === 'NAV_LEFT') this.patch({ stat: { ...st, col: Math.max(0, st.col - 1), row: Math.min(st.row, st.lists[Math.max(0, st.col - 1)].length) } })
     else if (a === 'NAV_RIGHT') this.patch({ stat: { ...st, col: Math.min(5, st.col + 1), row: Math.min(st.row, st.lists[Math.min(5, st.col + 1)].length) } })
-    else if (a === 'EXIT') this.g.sub ? this.patch({ sub: null }) : this.patch({ app: 'MENU' })
+    else if (a === 'EXIT') {
+      if (this.g.sub) this.patch({ sub: null })
+      else this.patch({ app: 'MENU' })
+    }
     else if (action.insert !== undefined) this.patch({ stat: { ...st, editing: action.insert } })
   }
 

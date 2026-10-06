@@ -726,7 +726,7 @@ export abstract class ScientificEngineBase extends BaseCalculatorEngine<Calculat
       const r = renderForm(mode.form(), this.modeState.form ?? initialFormState(), Math.max(rows, 4))
       return {
         kind: 'text',
-        title: `${mode.label} · ${r.title}`,
+        title: r.title === mode.label ? mode.label : `${mode.label} · ${r.title}`,
         lines: r.lines,
         highlightLine: r.highlightLine,
         cursorLine: r.cursorLine,

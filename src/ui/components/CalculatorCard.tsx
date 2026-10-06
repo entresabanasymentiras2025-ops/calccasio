@@ -3,7 +3,7 @@ import type { CalculatorCapabilities, CalculatorModelConfig } from '../../models
 import { useFavoritesStore } from '../../storage/favoritesStore'
 import { CAPABILITY_LABELS } from '../capabilityLabels'
 
-export const STATUS_BADGE: Record<CalculatorModelConfig['implementationStatus'], { label: string; className: string }> = {
+const STATUS_BADGE: Record<CalculatorModelConfig['implementationStatus'], { label: string; className: string }> = {
   full: { label: '🟢 Core implemented', className: 'text-emerald-700 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-950' },
   partial: { label: '🟡 Partial', className: 'text-amber-800 bg-amber-50 dark:text-amber-300 dark:bg-amber-950' },
   planned: { label: '⚪ Planned', className: 'text-neutral-600 bg-neutral-100 dark:text-neutral-400 dark:bg-neutral-800' },

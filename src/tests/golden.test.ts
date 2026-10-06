@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import classwizGolden from '../../tests/golden/classwiz.json'
+import esplusGolden from '../../tests/golden/esplus.json'
+import msGolden from '../../tests/golden/ms.json'
+import casGolden from '../../tests/golden/cas.json'
+import financialGolden from '../../tests/golden/financial.json'
 import { createEngine, loadEngine } from '../calculators/engineRegistry'
 import { getCalculatorById } from '../models/calculatorCatalog'
 import { evaluateCas } from '../math/symbolic/cas'
@@ -16,7 +19,14 @@ interface Case {
   expected?: string
   error?: string
 }
-const golden = <T,>(name: string): T[] => JSON.parse(readFileSync(resolve(__dirname, '../../tests/golden', name), 'utf8'))
+const FILES: Record<string, unknown[]> = {
+  'classwiz.json': classwizGolden,
+  'esplus.json': esplusGolden,
+  'ms.json': msGolden,
+  'cas.json': casGolden,
+  'financial.json': financialGolden,
+}
+const golden = <T,>(name: string): T[] => FILES[name] as T[]
 
 beforeAll(async () => {
   await Promise.all([loadEngine('classwiz'), loadEngine('esplus'), loadEngine('ms')])
