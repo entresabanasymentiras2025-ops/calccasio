@@ -31,6 +31,35 @@ function degreeKey(s: Sym): number {
   return 0.5
 }
 
+/** Exponents of plain symbols in a monomial (coefficients ignored); null for non-monomials. */
+function expMap(s: Sym): Record<string, number> | null {
+  const out: Record<string, number> = {}
+  const factors = s.t === 'mul' ? s.factors : [s]
+  for (const f of factors) {
+    if (f.t === 'num' || f.t === 'real') continue
+    if (f.t === 'sym') out[f.name] = (out[f.name] ?? 0) + 1
+    else if (f.t === 'pow' && f.base.t === 'sym' && f.exp.t === 'num') out[f.base.name] = (out[f.base.name] ?? 0) + Number(f.exp.q.n) / Number(f.exp.q.d)
+    else return null
+  }
+  return out
+}
+
+/** Term order: total degree descending, then lexicographic (a before b) by exponent, then text. */
+function compareTerms(a: Sym, b: Sym): number {
+  const d = degreeKey(b) - degreeKey(a)
+  if (d !== 0) return d
+  const ea = expMap(a)
+  const eb = expMap(b)
+  if (ea && eb) {
+    const vars = [...new Set([...Object.keys(ea), ...Object.keys(eb)])].sort()
+    for (const v of vars) {
+      const diff = (eb[v] ?? 0) - (ea[v] ?? 0)
+      if (diff !== 0) return diff
+    }
+  }
+  return print(a).localeCompare(print(b))
+}
+
 function hasReal(s: Sym): boolean {
   if (s.t === 'real') return true
   if (s.t === 'add') return s.terms.some(hasReal)
@@ -289,7 +318,7 @@ function simplifyAdd(terms: Sym[]): Sym {
     if (c.n === 0n) continue
     out.push(simplifyMul([numQ(c), rest]))
   }
-  out.sort((a, b) => degreeKey(b) - degreeKey(a) || print(a).localeCompare(print(b)))
+  out.sort(compareTerms)
   if (real !== null) {
     const v = real + Number(constant.n) / Number(constant.d)
     if (Math.abs(v) > 1e-15 || out.length === 0) out.push({ t: 'real', v })

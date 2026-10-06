@@ -96,20 +96,31 @@ export function polynomialRoots(coeffs: number[]): Complex[] {
     .sort((a, b) => (a.im === 0 && b.im !== 0 ? -1 : b.im === 0 && a.im !== 0 ? 1 : b.re - a.re || b.im - a.im))
 }
 
-/** Newton/secant solver for f(x) = 0 near x0 (the SOLVE function). */
-export function solveNumeric(f: (x: number) => number, x0: number): number {
+function newton(f: (x: number) => number, x0: number): number | null {
   let x = x0
   for (let i = 0; i < 200; i++) {
     const fx = f(x)
-    if (!Number.isFinite(fx)) break
-    if (Math.abs(fx) < 1e-14) return cleanZero(x)
+    if (!Number.isFinite(fx)) return null
+    if (Math.abs(fx) < 1e-14) return x
     const h = Math.max(1e-7, Math.abs(x) * 1e-7)
     const d = (f(x + h) - f(x - h)) / (2 * h)
-    if (d === 0 || !Number.isFinite(d)) break
+    if (d === 0 || !Number.isFinite(d)) {
+      // Flat spot: nudge away instead of giving up.
+      x += 0.5 + Math.abs(x) * 0.1
+      continue
+    }
     const next = x - fx / d
-    if (Math.abs(next - x) < 1e-13 * Math.max(1, Math.abs(x))) return cleanZero(next)
+    if (Math.abs(next - x) < 1e-13 * Math.max(1, Math.abs(x))) return next
     x = next
   }
-  if (Math.abs(f(x)) < 1e-9) return cleanZero(x)
+  return Math.abs(f(x)) < 1e-9 ? x : null
+}
+
+/** Newton solver for f(x) = 0 near x0 (the SOLVE function); retries from nearby starts. */
+export function solveNumeric(f: (x: number) => number, x0: number): number {
+  for (const start of [x0, x0 + 1, x0 - 1, x0 + 10, x0 - 10, x0 + 100, x0 - 100]) {
+    const r = newton(f, start)
+    if (r !== null && Number.isFinite(r) && Math.abs(f(r)) < 1e-9 * Math.max(1, Math.abs(r))) return cleanZero(r)
+  }
   throw new MathError('MathError', "Can't solve: no convergence")
 }
