@@ -5,3 +5,4 @@ export type AstNode =
   | { type: 'UnaryOp'; op: '+' | '-'; operand: AstNode }
   | { type: 'PostfixOp'; op: '!' | '%'; operand: AstNode }
   | { type: 'FunctionCall'; name: string; args: AstNode[] }
+  | { type: 'Equation'; left: AstNode; right: AstNode }

@@ -244,6 +244,8 @@ export function evaluateAst(node: AstNode, ctx: EvalContext): CalcValue {
       }
       break
     }
+    case 'Equation':
+      throw new MathError('SyntaxError', "'=' is only allowed in equations")
     case 'FunctionCall': {
       const lazy = LAZY_FUNCTIONS[node.name]
       if (lazy) return lazy(node.args, ctx)

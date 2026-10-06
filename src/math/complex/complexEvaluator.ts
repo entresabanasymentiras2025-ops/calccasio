@@ -98,6 +98,8 @@ export function evaluateComplexAst(node: AstNode, ctx: ComplexContext): Complex 
       }
       break
     }
+    case 'Equation':
+      throw new MathError('SyntaxError', "'=' is not allowed here")
     case 'FunctionCall': {
       const args = node.args.map((a) => evaluateComplexAst(a, ctx))
       const x = args[0]
