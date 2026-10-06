@@ -46,4 +46,6 @@ export interface CalculatorModelConfig {
   capabilities: CalculatorCapabilities
   implementationStatus: ImplementationStatus
   tagline: string
+  /** Optional finer-grained feature switches within a capability (e.g. FC-200V's BOND mode). */
+  features?: string[]
 }
