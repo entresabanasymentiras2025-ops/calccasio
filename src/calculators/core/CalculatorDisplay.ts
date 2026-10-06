@@ -86,6 +86,8 @@ export interface ScreenDisplayState {
   /** Function-key labels shown along the bottom (F1–F6). */
   softkeys?: string[]
   errorMessage: string | null
+  /** When set, the UI shows a text editor bound to this buffer (program editor); edits arrive as TEXT_INPUT events. */
+  textEntry?: { label: string; value: string }
 }
 
 export interface DocumentEntry {
@@ -98,8 +100,8 @@ export interface DocumentDisplayState {
   kind: 'document'
   app: string
   apps: Array<{ id: string; label: string }>
-  /** Tappable toolbar actions for the current app. */
-  toolbar: Array<{ id: string; label: string }>
+  /** Tappable toolbar actions for the current app (TOUCH targets). */
+  toolbar: Array<{ id: string; label: string; title?: string }>
   entries: DocumentEntry[]
   editing: string
   cursorCol: number
@@ -108,8 +110,8 @@ export interface DocumentDisplayState {
   indicators: DisplayIndicator[]
   status: string
   errorMessage: string | null
-  /** Tappable soft keyboard tabs (Math, Var, abc...). */
-  keyboardTab: string
+  /** On-screen soft keyboard defined by the engine (tabs + keys); taps arrive as TOUCH events. */
+  softKeyboard: { tabs: Array<{ id: string; label: string }>; active: string; keys: Array<{ label: string; target: string }> }
 }
 
 export type CalculatorDisplayState = TextDisplayState | ScreenDisplayState | DocumentDisplayState

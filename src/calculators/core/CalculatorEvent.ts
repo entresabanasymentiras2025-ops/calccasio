@@ -23,6 +23,8 @@ export type CalculatorEventType =
   | 'ZOOM_OUT'
   | 'TOUCH'
   | 'RESET'
+  /** Free text from an on-screen editor (program source, CAS input). payload: string */
+  | 'TEXT_INPUT'
 
 export interface CalculatorEvent {
   type: CalculatorEventType
