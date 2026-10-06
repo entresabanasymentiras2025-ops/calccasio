@@ -16,6 +16,7 @@ import type { CalculatorCapabilities, CalculatorModelConfig } from '../../models
 import { type FormNode, type FormEnv, type FormState, type AppletInput, initialFormState, stepForm, renderForm } from '../shared/FormApplet'
 import { formatCalcValue, formatReal } from '../shared/formatNumber'
 import { logger } from '../../utils/logger'
+import { solveNumeric } from '../../math/numerical/equations'
 
 export type ScientificModeKind = 'expression' | 'complex' | 'baseN' | 'form' | 'custom'
 
@@ -59,6 +60,7 @@ const VARIABLE_LETTERS = new Set(['A', 'B', 'C', 'D', 'E', 'F', 'X', 'Y', 'M'])
 export abstract class ScientificEngineBase extends BaseCalculatorEngine<CalculatorState> {
   protected readonly config: CalculatorModelConfig
   protected pendingStore = false
+  protected pendingRecall = false
   private historyIndex: number | null = null
 
   constructor(config: CalculatorModelConfig, layout: KeyboardLayout) {
@@ -117,10 +119,14 @@ export abstract class ScientificEngineBase extends BaseCalculatorEngine<Calculat
       return
     }
 
-    if (this.pendingStore && !isModifierToggle) {
+    if ((this.pendingStore || this.pendingRecall) && !isModifierToggle) {
+      const letter = [action.insert, key.alpha?.insert].find((t) => t !== undefined && VARIABLE_LETTERS.has(t))
+      const wasStore = this.pendingStore
       this.pendingStore = false
-      if (action.insert && VARIABLE_LETTERS.has(action.insert)) {
-        this.storeToVariable(action.insert)
+      this.pendingRecall = false
+      if (letter) {
+        if (wasStore) this.storeToVariable(letter)
+        else this.recallVariable(letter)
         this.clearModifiers()
         return
       }
@@ -173,8 +179,25 @@ export abstract class ScientificEngineBase extends BaseCalculatorEngine<Calculat
       case 'STO':
         this.pendingStore = true
         return true
+      case 'RCL':
+        this.pendingRecall = true
+        return true
+      case 'HYP':
+        this.state = {
+          ...this.state,
+          menu: openMenu(
+            ['sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh'].map((f) => ({ id: f, label: f.startsWith('a') ? `${f.slice(1)}⁻¹` : f, action: `insert:${f}(` })),
+            'hyp',
+          ),
+        }
+        return true
     }
     return false
+  }
+
+  private recallVariable(letter: string): void {
+    const value = letter === 'M' ? this.state.memory.independentMemory : this.state.memory.variables[letter] ?? fromInt(0)
+    this.state = { ...this.state, expression: letter, cursorPos: 1, result: this.formatResult(value), error: null }
   }
 
   // ---------------------------------------------------------------- menus
@@ -263,7 +286,7 @@ export abstract class ScientificEngineBase extends BaseCalculatorEngine<Calculat
     return items
   }
 
-  private handleMenuKey(action: KeyAction, keyId: string): void {
+  protected handleMenuKey(action: KeyAction, keyId: string): void {
     const menu = this.state.menu
     const nav = action.action
     if (nav === 'NAV_UP' || nav === 'NAV_DOWN' || nav === 'NAV_LEFT' || nav === 'NAV_RIGHT') {
@@ -276,7 +299,7 @@ export abstract class ScientificEngineBase extends BaseCalculatorEngine<Calculat
       return
     }
     if (nav === 'MODE') {
-      this.state = { ...this.state, menu: closeMenu(menu) }
+      this.onModeKeyInMenu()
       return
     }
     let shortcut: number | undefined
@@ -289,6 +312,11 @@ export abstract class ScientificEngineBase extends BaseCalculatorEngine<Calculat
     }
     this.state = { ...this.state, menu: closeMenu(sel.state) }
     this.performMenuAction(sel.action)
+  }
+
+  /** Pressing MODE while a menu is open: closes it (MS overrides this to page through mode screens). */
+  protected onModeKeyInMenu(): void {
+    this.state = { ...this.state, menu: closeMenu(this.state.menu) }
   }
 
   protected performMenuAction(action: string): void {
@@ -461,7 +489,49 @@ export abstract class ScientificEngineBase extends BaseCalculatorEngine<Calculat
       case 'SD':
         this.toggleSD()
         return
+      case 'SOLVE':
+        this.solveForX()
+        return
+      case 'ENG':
+        this.showEngineering()
+        return
     }
+  }
+
+  /** SOLVE: finds X with f(X) = 0 (or lhs = rhs) starting from the current X, stores it in X. */
+  private solveForX(): void {
+    const raw = this.state.expression
+    if (!raw.trim() || this.currentMode().kind !== 'expression') return
+    try {
+      const [lhs, rhs = '0'] = this.preprocess(raw).split('=')
+      const ctx = this.buildContext()
+      const f = (x: number) => {
+        const env = { ...ctx, variables: { ...ctx.variables, X: fromDecimal(new Decimal(x)) } }
+        return toNumber(evaluate(lhs, env)) - toNumber(evaluate(rhs, env))
+      }
+      const x0 = ctx.variables.X ? toNumber(ctx.variables.X) : 0
+      const x = solveNumeric(f, x0)
+      const value = fromDecimal(new Decimal(x.toPrecision(15)))
+      this.state = {
+        ...this.state,
+        result: `X=${this.formatResult(value)}`,
+        error: null,
+        memory: { ...this.state.memory, ans: value, variables: { ...this.state.memory.variables, X: value } },
+      }
+    } catch (err) {
+      const e = err instanceof MathError ? err : new MathError('MathError', "Can't Solve")
+      this.state = { ...this.state, error: { code: e.code, message: e.message } }
+    }
+  }
+
+  /** ENG: shows the current result in engineering notation (exponent multiple of 3). */
+  private showEngineering(): void {
+    if (this.state.result === null) return
+    const x = toNumber(this.state.memory.ans)
+    if (x === 0) return
+    const exp = Math.floor(Math.log10(Math.abs(x)) / 3) * 3
+    const mant = Number((x / 10 ** exp).toPrecision(10))
+    this.state = { ...this.state, result: `${mant}×10^${exp}` }
   }
 
   /** Deletes whole function names ("sin(") at once, like the hardware does. */
@@ -520,7 +590,10 @@ export abstract class ScientificEngineBase extends BaseCalculatorEngine<Calculat
 
   /** Hook so families can pre-process their own input syntax (e.g. MS's a⌟b⌟c fractions). */
   protected preprocess(expression: string): string {
+    // a⌟b⌟c (mixed) and a⌟b (simple) fraction-key syntax → parenthesized division.
     return expression
+      .replace(/(\d+(?:\.\d+)?)⌟(\d+(?:\.\d+)?)⌟(\d+(?:\.\d+)?)/g, '($1+$2/$3)')
+      .replace(/(\d+(?:\.\d+)?)⌟(\d+(?:\.\d+)?)/g, '($1/$2)')
   }
 
   protected formatResult(value: CalcValue): string {
@@ -685,7 +758,7 @@ export abstract class ScientificEngineBase extends BaseCalculatorEngine<Calculat
     return [
       { id: 'SHIFT', label: 'S', active: this.state.shift },
       { id: 'ALPHA', label: 'A', active: this.state.alpha },
-      { id: 'STO', label: 'STO', active: this.pendingStore },
+      { id: 'STO', label: this.pendingRecall ? 'RCL' : 'STO', active: this.pendingStore || this.pendingRecall },
       { id: 'M', label: 'M', active: memoryActive },
       { id: 'DEG', label: 'D', active: this.state.settings.angleMode === 'DEG' },
       { id: 'RAD', label: 'R', active: this.state.settings.angleMode === 'RAD' },

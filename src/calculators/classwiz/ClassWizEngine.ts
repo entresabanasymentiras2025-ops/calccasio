@@ -88,3 +88,5 @@ export class ClassWizEngine extends ScientificEngineBase {
     super.performMenuAction(action)
   }
 }
+
+export const createClassWizEngine = (config: CalculatorModelConfig) => new ClassWizEngine(config)
