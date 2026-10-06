@@ -59,7 +59,7 @@ describe('evaluator - trigonometry', () => {
 describe('evaluator - logarithms', () => {
   it('log base 10', () => expect(evalToText('log(100)')).toBe('2'))
   it('ln(1) = 0', () => expect(evalToText('ln(1)')).toBe('0'))
-  it('log base 2 of 8', () => expect(evalToText('log(8,2)')).toBe('3'))
+  it('log base 2 of 8 (CASIO log(base, x) order)', () => expect(evalToText('log(2,8)')).toBe('3'))
   it('rejects log of non-positive number', () => expect(() => evalToText('log(0)')).toThrow(MathError))
 })
 
@@ -78,5 +78,29 @@ describe('evaluator - variables and Ans', () => {
   it('resolves a memory variable', () => {
     const ctx = createContext({ variables: { A: evaluate('7', createContext()) } })
     expect(evalToText('A*2', ctx)).toBe('14')
+  })
+})
+
+describe('evaluator - calculus and combinatorics', () => {
+  it('d/dx', () => expect(evalToText('d/dx(X²,3)')).toBe('6'))
+  it('∫', () => expect(evalToText('∫(X²,0,3)')).toBe('9'))
+  it('Σ exact', () => expect(evalToText('Σ(X,1,10)')).toBe('55'))
+  it('Σ of fractions stays exact', () => expect(evalToText('Σ(1/X,1,3)')).toBe('1 5/6'))
+  it('Π', () => expect(evalToText('Π(X,1,5)')).toBe('120'))
+  it('nCr / nPr', () => {
+    expect(evalToText('nCr(5,2)')).toBe('10')
+    expect(evalToText('nPr(5,2)')).toBe('20')
+  })
+  it('gcd / lcm', () => {
+    expect(evalToText('gcd(12,18)')).toBe('6')
+    expect(evalToText('lcm(4,6)')).toBe('12')
+  })
+  it('int / intg', () => {
+    expect(evalToText('int(-2.5)')).toBe('-2')
+    expect(evalToText('intg(-2.5)')).toBe('-3')
+  })
+  it('X variable binding does not leak', () => {
+    const ctx = createContext({ variables: { X: evaluate('100', createContext()) } })
+    expect(evalToText('Σ(X,1,3)+X', ctx)).toBe('106')
   })
 })

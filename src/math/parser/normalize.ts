@@ -6,6 +6,10 @@
  */
 export function normalizeExpression(input: string): string {
   return input
+    .replace(/d\/dx\(/g, 'diff(')
+    .replace(/∫\(/g, 'integ(')
+    .replace(/Σ\(/g, 'sum(')
+    .replace(/Π\(/g, 'prod(')
     .replace(/√/g, 'sqrt')
     .replace(/∛/g, 'cbrt')
     .replace(/⁻¹/g, '^(-1)')
