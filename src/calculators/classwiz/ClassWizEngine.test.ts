@@ -115,7 +115,7 @@ describe('ClassWizEngine - modes', () => {
 
   it('selecting an unimplemented mode shows an error, not a fake mode', () => {
     const engine = new ClassWizEngine(config)
-    press(engine, 'MODE', 'NAV_DOWN', 'EQUALS')
+    press(engine, 'MODE', 'NAV_UP', 'EQUALS') // last item: a planned mode
     expect(engine.getState().menu.open).toBe(false)
     expect(engine.getState().mode).toBe('COMP')
     expect(engine.getState().error?.code).toBe('ModeError')

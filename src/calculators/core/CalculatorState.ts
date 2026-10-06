@@ -8,23 +8,41 @@ export interface MenuItem {
   label: string
   action?: string
   children?: MenuItem[]
+  /** Short icon glyph for icon-grid menus (graphing MAIN MENU, ClassWiz HOME). */
+  icon?: string
+  disabled?: boolean
+}
+
+export interface MenuLevel {
+  items: MenuItem[]
+  selectedIndex: number
+  title: string
 }
 
 export interface MenuState {
   open: boolean
+  /** Breadcrumb of titles, root first. */
   path: string[]
   items: MenuItem[]
   selectedIndex: number
+  /** Parent levels for submenu navigation (see core/Menu.ts). */
+  stack?: MenuLevel[]
+  /** >1 renders as an icon grid with 2D navigation. */
+  columns?: number
 }
 
 export function closedMenu(items: MenuItem[] = []): MenuState {
-  return { open: false, path: [], items, selectedIndex: 0 }
+  return { open: false, path: [], items, selectedIndex: 0, stack: [] }
 }
 
 export interface CalculatorSettings {
   angleMode: AngleMode
   displayDigits: number
-  fractionDisplay: 'mixed' | 'decimal'
+  /** How exact rational results are shown: mixed (a b/c), improper (d/c) or always decimal. */
+  fractionDisplay: 'mixed' | 'improper' | 'decimal'
+  /** Number format: Norm (auto), Fix n decimals, Sci n significant digits. */
+  numberFormat?: { kind: 'norm' } | { kind: 'fix'; digits: number } | { kind: 'sci'; digits: number }
+  complexFormat?: 'rect' | 'polar'
 }
 
 export interface CalculatorErrorState {
@@ -53,4 +71,10 @@ export interface CalculatorState {
   menu: MenuState
   settings: CalculatorSettings
   error: CalculatorErrorState | null
+  /** Serializable per-mode sub-state (form applets, BASE-N radix, statistics editor...). */
+  modeState?: Record<string, unknown>
+  /** Graphing calculators: viewport, function list, current app. */
+  graphState?: Record<string, unknown>
+  /** CAS/ClassPad: document with input/output lines. */
+  documentState?: Record<string, unknown>
 }

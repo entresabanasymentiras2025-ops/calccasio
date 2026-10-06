@@ -22,10 +22,10 @@ describe('CalculatorView integration', () => {
     expect(await screen.findByText('= 4')).toBeInTheDocument()
   })
 
-  it('MODE opens a real menu listing Calculate', async () => {
+  it('HOME opens a real menu listing Calculate', async () => {
     const user = userEvent.setup()
     render(<CalculatorView config={config} />)
-    await user.click(screen.getByRole('button', { name: 'MODE' }))
+    await user.click(screen.getByRole('button', { name: 'HOME' }))
     expect(await screen.findByText(/Calculate/)).toBeInTheDocument()
   })
 

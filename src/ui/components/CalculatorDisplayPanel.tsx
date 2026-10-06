@@ -1,44 +1,21 @@
+import { lazy, Suspense } from 'react'
 import type { CalculatorDisplayState } from '../../calculators/core/CalculatorDisplay'
+import { TextDisplay } from './TextDisplay'
+
+const ScreenDisplay = lazy(() => import('./ScreenDisplay'))
+const DocumentDisplay = lazy(() => import('./DocumentDisplay'))
 
 interface Props {
   display: CalculatorDisplayState
+  onTouch?: (target: string, payload?: unknown) => void
 }
 
-function renderLine(text: string, lineIndex: number, display: CalculatorDisplayState) {
-  if (display.cursorLine !== lineIndex || display.cursorCol === null) {
-    return <span>{text || ' '}</span>
-  }
-  const col = display.cursorCol
+/** Picks the renderer for the engine's display model; no calculator logic here. */
+export function CalculatorDisplayPanel({ display, onTouch }: Props) {
+  if (display.kind === 'text') return <TextDisplay display={display} />
   return (
-    <span>
-      {text.slice(0, col)}
-      <span className="inline-block w-[2px] h-[1.1em] align-middle bg-lcd-fg mx-[1px] animate-pulse" aria-hidden />
-      {text.slice(col)}
-    </span>
-  )
-}
-
-export function CalculatorDisplayPanel({ display }: Props) {
-  return (
-    <div className="rounded-lg bg-lcd-bg text-lcd-fg px-4 py-3 shadow-inner select-none" role="status" aria-live="polite">
-      <div className="flex gap-3 text-[10px] font-mono uppercase tracking-wide h-4 mb-1">
-        {display.indicators.map((ind) => (
-          <span key={ind.id} className={ind.active ? 'opacity-100 font-bold' : 'opacity-20'}>
-            {ind.label}
-          </span>
-        ))}
-      </div>
-      <div className="font-mono text-2xl leading-snug min-h-[4.5rem] flex flex-col justify-end items-end break-all">
-        {display.errorMessage ? (
-          <span className="text-red-800 text-base">{display.errorMessage}</span>
-        ) : (
-          display.lines.map((line, i) => (
-            <div key={i} className={i === display.lines.length - 1 ? '' : 'text-lg opacity-70'}>
-              {renderLine(line, i, display)}
-            </div>
-          ))
-        )}
-      </div>
-    </div>
+    <Suspense fallback={<div className="h-48 rounded-lg bg-neutral-200 dark:bg-neutral-800 animate-pulse" role="status">Loading display…</div>}>
+      {display.kind === 'screen' ? <ScreenDisplay display={display} /> : <DocumentDisplay display={display} onTouch={onTouch} />}
+    </Suspense>
   )
 }
