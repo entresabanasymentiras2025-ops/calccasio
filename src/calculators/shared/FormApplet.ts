@@ -41,8 +41,8 @@ export interface FormSpecForm {
   title: string
   fields: FieldSpec[]
   compute?: (v: FormValues, env: FormEnv) => FormResult
-  /** Solve-for-field (financial SOLVE key): returns the new value of `fieldId`. */
-  solve?: (fieldId: string, v: FormValues, env: FormEnv) => number
+  /** Solve-for-field (financial SOLVE key): returns the new value of `fieldId` (number, or text for dates). */
+  solve?: (fieldId: string, v: FormValues, env: FormEnv) => number | string
 }
 
 export interface FormSpecChoice {
@@ -245,8 +245,8 @@ export function stepForm(root: FormNode, state: FormState, input: AppletInput, e
       const committed = c.state
       try {
         const v = form.solve(field.id, formValues(committed, form), env)
-        const text = env.fmt(v)
-        return { state: withValues(committed, form, { ...formValues(committed, form), [field.id]: text }), ans: v }
+        const text = typeof v === 'number' ? env.fmt(v) : v
+        return { state: withValues(committed, form, { ...formValues(committed, form), [field.id]: text }), ans: typeof v === 'number' ? v : undefined }
       } catch (err) {
         return { state: { ...committed, error: toError(err) } }
       }
